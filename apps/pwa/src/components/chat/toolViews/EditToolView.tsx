@@ -80,9 +80,9 @@ export function EditToolView({ input }: { input: Record<string, unknown> }) {
           <span className="text-slate-500 font-mono">?</span>
         )}
         <span className="text-slate-500">(</span>
-        <span className="text-red-400">-{oldStr.length}</span>
+        <span className="text-red-400">-{oldLines.length}</span>
         <span className="text-slate-500">/</span>
-        <span className="text-green-400">+{newStr.length}</span>
+        <span className="text-green-400">+{newLines.length}</span>
         <span className="text-slate-500">)</span>
         {(oldStr || newStr) && !autoExpand && (
           <button

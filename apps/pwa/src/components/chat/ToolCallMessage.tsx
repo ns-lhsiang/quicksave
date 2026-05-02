@@ -4,16 +4,17 @@ import { useState, type ReactNode } from 'react';
 import { parseToolUseError } from './ToolResultMessage';
 import type { ClaudeUserInputRequestPayload } from '@sumicom/quicksave-shared';
 import { ChevronIcon } from '../ui/ChevronIcon';
-import { TOOL_VIEWS, TOOL_COLORS } from './toolViews/registry';
+import { TOOL_VIEWS, TOOL_COLORS, SANDBOX_BASH_TOOL, UPDATE_SESSION_STATUS_TOOL } from './toolViews/registry';
 import { AskUserQuestionToolView } from './toolViews/AskUserQuestionToolView';
 import { ExitPlanModeToolView, ExitPlanModeInteractiveView } from './toolViews/PlanModeToolView';
 import { FallbackToolView } from './toolViews/FallbackToolView';
+import { LONG_BASH_COMMAND_THRESHOLD } from './toolViews/BashToolView';
 import { InlinePermissionActions } from './InlinePermissionActions';
 import { InteractiveQuestionView } from './InteractiveQuestionView';
 import { linkifyPaths } from './linkifyPaths';
 
 /** Tools whose stdout typically contains paths worth linkifying. */
-const LINKIFY_RESULT_TOOLS = new Set(['Bash', 'Glob', 'Grep']);
+const LINKIFY_RESULT_TOOLS = new Set(['Bash', 'Glob', 'Grep', SANDBOX_BASH_TOOL]);
 
 const INLINE_RESULT_TOOLS = new Set(['Read', 'Write', 'Edit', 'Bash', 'Glob', 'Grep']);
 const INLINE_RESULT_BORDER: Record<string, string> = {
@@ -23,10 +24,11 @@ const INLINE_RESULT_BORDER: Record<string, string> = {
   Bash:  'border-orange-500/20',
   Glob:  'border-purple-500/20',
   Grep:  'border-purple-500/20',
+  [SANDBOX_BASH_TOOL]: 'border-cyan-500/20',
 };
 
 // Tools where result text is implied by the tool call itself (suppress unless error)
-const TOOLS_SUPPRESS_RESULT_CONTENT = new Set(['Edit']);
+const TOOLS_SUPPRESS_RESULT_CONTENT = new Set(['Edit', 'Write', UPDATE_SESSION_STATUS_TOOL]);
 
 function InlineToolResult({ content, toolName, suppressContent, expanded }: {
   content: string;
@@ -134,16 +136,39 @@ export function ToolCallMessage({ toolName, toolInput, content, toolResultConten
   const resultAutoExpand = !resultContent.trim() || resultLineCount <= 2;
   const resultSuppressed = toolName ? TOOLS_SUPPRESS_RESULT_CONTENT.has(toolName) : false;
   const resultError = isInlineResultTool ? parseToolUseError(resultContent) : null;
-  const showChevron = isInlineResultTool && !resultAutoExpand && resultError === null && !resultSuppressed;
+  const resultIsCollapsible = isInlineResultTool && !resultAutoExpand && resultError === null && !resultSuppressed;
+
+  // Bash (and our sandboxed Bash) get a unified left-side chevron that toggles
+  // BOTH command truncation and result visibility. Other tools keep the
+  // right-side "{N} lines" chevron.
+  const isBash = toolName === 'Bash' || toolName === SANDBOX_BASH_TOOL;
+  const bashCommandLong = isBash && !hasPending
+    && ((parsedInput.command as string) ?? '').length > LONG_BASH_COMMAND_THRESHOLD;
+  const showRightChevron = resultIsCollapsible && !isBash;
+  const showLeftChevron = isBash && (bashCommandLong || resultIsCollapsible);
+
   const [resultExpanded, setResultExpanded] = useState(false);
 
-  const chevronButton: ReactNode = showChevron ? (
+  const defaultChevronButton: ReactNode = showRightChevron ? (
     <button
       onClick={() => setResultExpanded(v => !v)}
       className="flex items-center gap-1 shrink-0 bg-slate-700/60 hover:bg-slate-600/60 text-slate-400 hover:text-slate-300 rounded px-1.5 py-0.5 transition-colors"
     >
       <ChevronIcon expanded={resultExpanded} size="w-2.5 h-2.5" strokeWidth={2.5} />
       <span className="text-[10px]">{resultLineCount} lines</span>
+    </button>
+  ) : null;
+
+  const bashChevronButton: ReactNode = showLeftChevron ? (
+    <button
+      onClick={() => setResultExpanded(v => !v)}
+      className="flex items-center gap-1 shrink-0 bg-slate-700/60 hover:bg-slate-600/60 text-slate-400 hover:text-slate-300 rounded p-1 transition-colors"
+      aria-label={resultExpanded ? 'Collapse' : 'Expand'}
+    >
+      <ChevronIcon expanded={resultExpanded} size="w-4 h-4" strokeWidth={2.5} />
+      {resultIsCollapsible && (
+        <span className="text-[10px]">{resultLineCount} lines</span>
+      )}
     </button>
   ) : null;
 
@@ -158,9 +183,10 @@ export function ToolCallMessage({ toolName, toolInput, content, toolResultConten
               : ToolView
                 ? <ToolView
                     input={parsedInput}
-                    headerSuffix={isInlineResultTool ? chevronButton : undefined}
+                    headerSuffix={(isBash ? bashChevronButton : defaultChevronButton) ?? undefined}
                     resultContent={resultContent}
                     isPending={hasPending}
+                    expanded={resultExpanded}
                   />
                 : <FallbackToolView toolName={toolName} content={toolInput || content} />}
         </div>
