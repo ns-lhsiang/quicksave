@@ -53,6 +53,9 @@ export function attachmentsToContentBlocks(
       continue;
     }
     if (a.kind === 'pdf') {
+      // `title` is preserved in the JSONL transcript, so on cold replay the
+      // cardBuilder rebind can recover the original filename even when the
+      // persisted attachment meta is gone (eviction, fresh daemon, etc.).
       blocks.push({
         type: 'document',
         source: {
@@ -60,6 +63,7 @@ export function attachmentsToContentBlocks(
           media_type: 'application/pdf',
           data: a.data,
         },
+        title: a.name,
       });
       continue;
     }

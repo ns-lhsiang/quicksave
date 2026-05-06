@@ -138,13 +138,16 @@ describe('attachmentsToContentBlocks — image attachments', () => {
 // ============================================================================
 
 describe('attachmentsToContentBlocks — pdf attachments', () => {
-  it('builds [documentBlock, textBlock] for a single PDF with non-empty prompt', () => {
+  it('builds [documentBlock, textBlock] for a single PDF with non-empty prompt, including title', () => {
     const data = b64('%PDF-1.4 fake');
-    const att = makePdf({ data });
+    const att = makePdf({ data, name: 'invoice-2026-q1.pdf' });
     const result = asArray(attachmentsToContentBlocks('summarize', [att]));
 
     expect(result).toHaveLength(2);
 
+    // The `title` field is critical: it is what cardBuilder reads on cold
+    // JSONL replay to recover the original filename when the persisted
+    // attachment meta is no longer available.
     expect(result[0]).toEqual({
       type: 'document',
       source: {
@@ -152,9 +155,18 @@ describe('attachmentsToContentBlocks — pdf attachments', () => {
         media_type: 'application/pdf',
         data,
       },
+      title: 'invoice-2026-q1.pdf',
     });
 
     expect(result[1]).toEqual({ type: 'text', text: 'summarize' });
+  });
+
+  it('preserves the exact attachment name in the document title (unicode + spaces)', () => {
+    const att = makePdf({ name: '会議メモ 2026-05-03.pdf' });
+    const result = asArray(attachmentsToContentBlocks('q', [att]));
+
+    expect(result[0].type).toBe('document');
+    expect(result[0].title).toBe('会議メモ 2026-05-03.pdf');
   });
 });
 

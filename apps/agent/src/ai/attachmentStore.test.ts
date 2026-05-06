@@ -11,6 +11,7 @@ import {
   hasPersistedAttachment,
   removeSessionAttachments,
   listSessionAttachments,
+  readTurnManifest,
 } from './attachmentStore.js';
 import type { Attachment } from '@sumicom/quicksave-shared';
 
@@ -87,5 +88,58 @@ describe('attachmentStore', () => {
 
   it('attachments dir lives under the configured quicksave dir', () => {
     expect(getAttachmentsDir()).toBe(join(dir, 'state', 'attachments'));
+  });
+
+  it('appends a turn-manifest line per persistAttachments call, in send order', async () => {
+    await persistAttachments('s1', [makeAttachment('a', 'A'), makeAttachment('b', 'B')]);
+    await persistAttachments('s1', [makeAttachment('c', 'C')]);
+    await persistAttachments('s1', [makeAttachment('d', 'D'), makeAttachment('e', 'E'), makeAttachment('f', 'F')]);
+
+    const manifest = await readTurnManifest('s1');
+    expect(manifest).toEqual([
+      { ids: ['a', 'b'] },
+      { ids: ['c'] },
+      { ids: ['d', 'e', 'f'] },
+    ]);
+  });
+
+  it('readTurnManifest returns [] when no manifest exists', async () => {
+    expect(await readTurnManifest('never-persisted')).toEqual([]);
+  });
+
+  it('persistAttachments with empty array does not create a manifest line', async () => {
+    await persistAttachments('s1', []);
+    expect(await readTurnManifest('s1')).toEqual([]);
+
+    await persistAttachments('s1', [makeAttachment('a', 'x')]);
+    await persistAttachments('s1', []); // no-op
+    await persistAttachments('s1', [makeAttachment('b', 'y')]);
+    expect(await readTurnManifest('s1')).toEqual([
+      { ids: ['a'] },
+      { ids: ['b'] },
+    ]);
+  });
+
+  it('removeSessionAttachments also drops the turn manifest', async () => {
+    await persistAttachments('s1', [makeAttachment('a', 'x')]);
+    expect((await readTurnManifest('s1')).length).toBe(1);
+    await removeSessionAttachments('s1');
+    expect(await readTurnManifest('s1')).toEqual([]);
+  });
+
+  it('readTurnManifest skips malformed lines without throwing', async () => {
+    await persistAttachments('s1', [makeAttachment('a', 'x')]);
+    // corrupt the manifest with a bad line and a valid line
+    const { appendFile } = await import('fs/promises');
+    const path = join(getAttachmentsDir(), 's1', 'turn-manifest.jsonl');
+    await appendFile(path, 'not-json\n');
+    await appendFile(path, JSON.stringify({ ids: ['b'] }) + '\n');
+    await appendFile(path, JSON.stringify({ ids: 'not-an-array' }) + '\n');
+
+    const manifest = await readTurnManifest('s1');
+    expect(manifest).toEqual([
+      { ids: ['a'] },
+      { ids: ['b'] },
+    ]);
   });
 });

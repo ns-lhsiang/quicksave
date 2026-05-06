@@ -18,7 +18,7 @@
 // nukes the directory.
 // ============================================================================
 
-import { mkdir, readFile, writeFile, rm, readdir, stat } from 'fs/promises';
+import { mkdir, readFile, writeFile, appendFile, rm, readdir, stat } from 'fs/promises';
 import { join } from 'path';
 import type { Attachment, AttachmentMetadata } from '@sumicom/quicksave-shared';
 import { getAttachmentsDir } from '../service/singleton.js';
@@ -44,6 +44,10 @@ function metaPathFor(sessionId: string, attachmentId: string): string {
   return join(dirFor(sessionId), `${attachmentId}.meta.json`);
 }
 
+function turnManifestPathFor(sessionId: string): string {
+  return join(dirFor(sessionId), 'turn-manifest.jsonl');
+}
+
 /**
  * Persist a batch of resolved attachments under one session id. Idempotent
  * per id — re-writing the same id overwrites both files.
@@ -67,6 +71,42 @@ export async function persistAttachments(
     };
     await writeFile(metaPathFor(sessionId, a.id), JSON.stringify(meta));
   }));
+  // Append a turn-manifest line so the cardBuilder can rebind on JSONL replay
+  // by exact UUID instead of falling back to fuzzy (kind+size+name) match.
+  // One line per attachment-bearing user turn, in send order.
+  const line = JSON.stringify({ ids: attachments.map((a) => a.id) }) + '\n';
+  await appendFile(turnManifestPathFor(sessionId), line);
+}
+
+export interface TurnManifestEntry {
+  ids: string[];
+}
+
+/**
+ * Read the per-session attachment turn manifest in send order. Returns an
+ * empty array if no manifest exists yet (e.g. a session whose attachments
+ * predate this code), letting callers fall back to fuzzy rebind.
+ */
+export async function readTurnManifest(sessionId: string): Promise<TurnManifestEntry[]> {
+  let raw: string;
+  try {
+    raw = await readFile(turnManifestPathFor(sessionId), 'utf8');
+  } catch {
+    return [];
+  }
+  const out: TurnManifestEntry[] = [];
+  for (const line of raw.split('\n')) {
+    if (!line.trim()) continue;
+    try {
+      const parsed = JSON.parse(line);
+      if (parsed && Array.isArray(parsed.ids) && parsed.ids.every((x: unknown) => typeof x === 'string')) {
+        out.push({ ids: parsed.ids as string[] });
+      }
+    } catch {
+      // skip malformed line — don't break the whole replay
+    }
+  }
+  return out;
 }
 
 /**

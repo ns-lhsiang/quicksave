@@ -21,7 +21,7 @@ import { createReadStream, existsSync } from 'fs';
 import { createInterface } from 'readline';
 import { homedir } from 'os';
 import { getCardHistoryDir } from '../service/singleton.js';
-import { listSessionAttachments, type PersistedMeta } from './attachmentStore.js';
+import { listSessionAttachments, readTurnManifest, type PersistedMeta } from './attachmentStore.js';
 
 /** Decoded byte length of a base64 string, accounting for `=` padding. */
 function decodedBase64Bytes(base64: unknown): number {
@@ -808,11 +808,19 @@ export async function buildCardsFromHistory(
     }
   }
 
-  // ── Load persisted attachment metas so we can rebind synthetic
-  //    `replay:N` ids in user blocks back to the real upload UUIDs the
-  //    PWA needs for `attachment:fetch`.
-  const persistedMetas = await listSessionAttachments(sessionId).catch(() => [] as PersistedMeta[]);
+  // ── Load persisted attachment metas + turn manifest so we can rebind
+  //    synthetic `replay:N` ids in user blocks back to the real upload UUIDs
+  //    the PWA needs for `attachment:fetch`. Manifest gives an exact-UUID
+  //    match per turn (preferred); the fuzzy `(kind, size, name)` resolver is
+  //    the fallback for sessions whose attachments predate the manifest.
+  const [persistedMetas, turnManifest] = await Promise.all([
+    listSessionAttachments(sessionId).catch(() => [] as PersistedMeta[]),
+    readTurnManifest(sessionId).catch(() => [] as { ids: string[] }[]),
+  ]);
+  const metaById = new Map<string, PersistedMeta>();
+  for (const m of persistedMetas) metaById.set(m.id, m);
   const resolveAttachment = makeAttachmentResolver(persistedMetas);
+  let attachmentTurnCursor = 0;
 
   // ── Pass 2: Build Cards from sliced messages ───────────────────────────
 
@@ -868,12 +876,27 @@ export async function buildCardsFromHistory(
         const textParts: string[] = [];
         let hasNonTextBlock = false;
 
+        // Pre-scan the block array for attachment blocks so we know whether
+        // to consume a manifest entry for this turn (an attachment-bearing
+        // user turn contributes exactly one manifest line, in send order).
+        const turnHasAttachment = rawMessage.content.some((b: any) =>
+          (b?.type === 'image' && b.source?.type === 'base64') ||
+          (b?.type === 'document' && b.source?.type === 'base64' && b.source.media_type === 'application/pdf'),
+        );
+        const turnEntry = turnHasAttachment ? turnManifest[attachmentTurnCursor] : undefined;
+        if (turnHasAttachment) attachmentTurnCursor++;
+        let manifestIdx = 0;
+
         for (const block of rawMessage.content) {
           if (block?.type === 'image' && block.source?.type === 'base64') {
             hasNonTextBlock = true;
             const size = decodedBase64Bytes(block.source.data);
             const mimeType = typeof block.source.media_type === 'string' ? block.source.media_type : 'image/png';
-            const matched = resolveAttachment('image', size);
+            const manifestId = turnEntry?.ids[manifestIdx++];
+            const exact = manifestId ? metaById.get(manifestId) : undefined;
+            const matched = exact && exact.kind === 'image' && exact.size === size
+              ? exact
+              : resolveAttachment('image', size);
             attachments.push(matched
               ? { id: matched.id, kind: matched.kind, mimeType: matched.mimeType, name: matched.name, size: matched.size }
               : { id: `replay:${nextId()}`, kind: 'image', mimeType, name: 'attachment', size });
@@ -881,7 +904,11 @@ export async function buildCardsFromHistory(
             hasNonTextBlock = true;
             const size = decodedBase64Bytes(block.source.data);
             const name = typeof block.title === 'string' && block.title.length > 0 ? block.title : 'document.pdf';
-            const matched = resolveAttachment('pdf', size, name);
+            const manifestId = turnEntry?.ids[manifestIdx++];
+            const exact = manifestId ? metaById.get(manifestId) : undefined;
+            const matched = exact && exact.kind === 'pdf' && exact.size === size
+              ? exact
+              : resolveAttachment('pdf', size, name);
             attachments.push(matched
               ? { id: matched.id, kind: matched.kind, mimeType: matched.mimeType, name: matched.name, size: matched.size }
               : { id: `replay:${nextId()}`, kind: 'pdf', mimeType: 'application/pdf', name, size });
