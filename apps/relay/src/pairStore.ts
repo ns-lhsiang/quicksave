@@ -13,11 +13,18 @@ interface PairMailbox {
   listeners: Set<(slot: PairSlot) => void>;
 }
 
+export type PairMailboxOutcome = 'deleted' | 'expired_with_slots' | 'expired_empty';
+
 export interface PairStoreConfig {
   ttlMs?: number;
   maxSlots?: number;
   maxDataSize?: number;
   now?: () => number;
+  /**
+   * Fired when a mailbox leaves the store via explicit delete or TTL expiry.
+   * Used by metrics to count pair-flow outcomes; safe to omit.
+   */
+  onMailboxOutcome?: (outcome: PairMailboxOutcome) => void;
 }
 
 const DEFAULT_TTL_MS = 5 * 60_000;
@@ -52,6 +59,7 @@ export class PairStore {
   private readonly maxSlots: number;
   private readonly maxDataSize: number;
   private readonly now: () => number;
+  private readonly onMailboxOutcome?: (outcome: PairMailboxOutcome) => void;
   private nextId = 1;
   private gcTimer: ReturnType<typeof setInterval> | null = null;
 
@@ -60,6 +68,7 @@ export class PairStore {
     this.maxSlots = config.maxSlots ?? DEFAULT_MAX_SLOTS;
     this.maxDataSize = config.maxDataSize ?? DEFAULT_MAX_DATA_SIZE;
     this.now = config.now ?? Date.now;
+    this.onMailboxOutcome = config.onMailboxOutcome;
   }
 
   startGc(intervalMs = 30_000): void {
@@ -80,8 +89,11 @@ export class PairStore {
     const t = this.now();
     for (const [addr, mb] of this.mailboxes) {
       if (mb.expiresAt <= t) {
+        const outcome: PairMailboxOutcome =
+          mb.slots.length > 0 ? 'expired_with_slots' : 'expired_empty';
         mb.listeners.clear();
         this.mailboxes.delete(addr);
+        this.onMailboxOutcome?.(outcome);
       }
     }
   }
@@ -122,8 +134,11 @@ export class PairStore {
     const mb = this.mailboxes.get(addr);
     if (!mb) return [];
     if (mb.expiresAt <= this.now()) {
+      const outcome: PairMailboxOutcome =
+        mb.slots.length > 0 ? 'expired_with_slots' : 'expired_empty';
       mb.listeners.clear();
       this.mailboxes.delete(addr);
+      this.onMailboxOutcome?.(outcome);
       return [];
     }
     return mb.slots.slice();
@@ -134,8 +149,9 @@ export class PairStore {
     if (mb) {
       mb.listeners.clear();
       mb.slots = [];
+      this.mailboxes.delete(addr);
+      this.onMailboxOutcome?.('deleted');
     }
-    this.mailboxes.delete(addr);
   }
 
   subscribe(

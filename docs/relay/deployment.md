@@ -108,11 +108,29 @@ Application metrics:
 | `relay_push_subscriptions` | gauge | — | Total Web Push subscriptions (only if VAPID is configured) |
 | `relay_push_verify_failures_total` | counter | `reason` | Signature verification failures on `/push/*` |
 | `relay_push_notifications_total` | counter | `outcome` | Web Push send results (`sent`, `pruned`, `failed`) |
+| `relay_message_size_bytes` | histogram | `channel` | Per-frame size for forwarded messages |
+| `relay_messages_by_channel_total` | counter | `channel` | Frames forwarded, by source channel |
+| `relay_connection_messages` | histogram | `channel` | Frames a peer sent during one WS session, observed at disconnect |
+| `relay_connection_bytes` | histogram | `channel` | Bytes a peer sent+received during one WS session, observed at disconnect |
+| `relay_reconnects_total` | counter | `channel` | WS connects whose peer ID disconnected within the last 60s |
+| `relay_sync_writes_total` | counter | `kind` | Successful sync writes (`blob`, `tombstone`) |
+| `relay_sync_store_bytes` | gauge | — | Total bytes of ciphertext stored in the sync store |
+| `relay_pair_mailbox_outcomes_total` | counter | `outcome` | Pair-mailbox lifecycle outcomes (`deleted`, `expired_with_slots`, `expired_empty`) |
+| `relay_devices_per_agent` | histogram | — | Distinct PWA peers watching one agent. One sample per agent per hourly tick |
+| `relay_active_keys` | gauge | `window` | Distinct keys (PWA pubkey or agent ID) with activity in the trailing window (`24h`, `7d`, `30d`) |
+| `relay_key_bandwidth_bytes` | histogram | — | Bytes attributed to a single key over one rollup window. One sample per active key per hour |
+| `relay_key_messages` | histogram | — | Messages attributed to a single key over one rollup window. One sample per active key per hour |
 
 The `route` label is normalised to a fixed enum (`health`, `stats`, `metrics`,
 `sync_blob`, `sync_tombstone`, `sync_lock`, `pair`, `pair_subscribe`,
 `push_register`, `push_unregister`, `push_notify`, `other`) so per-user
 identifiers in URLs never become labels.
+
+`relay_active_keys` and `relay_key_*` are the closest the relay gets to
+"DAU"-style analytics. Per-key labels are deliberately avoided — instead, one
+sample per active key is observed into the histograms at each hourly rollup
+tick, so distributions (p50/p99 bytes, etc.) are recoverable while cardinality
+remains bounded.
 
 ## Graceful Shutdown
 

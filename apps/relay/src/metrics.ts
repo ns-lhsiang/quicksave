@@ -113,6 +113,66 @@ export const pairPostErrorsTotal = new Counter({
   registers: [register],
 });
 
+export const pairMailboxOutcomesTotal = new Counter({
+  name: 'relay_pair_mailbox_outcomes_total',
+  help: 'Pair mailbox lifecycle outcomes, observed at deletion or TTL expiry.',
+  labelNames: ['outcome'] as const, // 'deleted' | 'expired_with_slots' | 'expired_empty'
+  registers: [register],
+});
+
+/* ---------- Per-message size + per-channel breakdown ---------- */
+
+export const messageSizeBytes = new Histogram({
+  name: 'relay_message_size_bytes',
+  help: 'Size of frames forwarded between peers, by source channel.',
+  labelNames: ['channel'] as const,
+  buckets: [64, 256, 1024, 4096, 16_384, 65_536, 262_144, 1_048_576, 4_194_304],
+  registers: [register],
+});
+
+export const messagesByChannelTotal = new Counter({
+  name: 'relay_messages_by_channel_total',
+  help: 'Frames forwarded between peers, broken down by source channel. Sum across labels matches relay_messages_relayed_total.',
+  labelNames: ['channel'] as const,
+  registers: [register],
+});
+
+/* ---------- Per-connection (= per-WS-session) summaries ---------- */
+
+export const connectionMessagesTotal = new Histogram({
+  name: 'relay_connection_messages',
+  help: 'Total frames a peer sent during one WS session, observed at disconnect.',
+  labelNames: ['channel'] as const,
+  buckets: [1, 10, 100, 1000, 10_000, 100_000, 1_000_000],
+  registers: [register],
+});
+
+export const connectionBytesTotal = new Histogram({
+  name: 'relay_connection_bytes',
+  help: 'Total bytes a peer sent+received during one WS session, observed at disconnect.',
+  labelNames: ['channel'] as const,
+  buckets: [1024, 10_240, 102_400, 1_048_576, 10_485_760, 104_857_600, 1_073_741_824],
+  registers: [register],
+});
+
+/* ---------- Reconnect detection ---------- */
+
+export const reconnectsTotal = new Counter({
+  name: 'relay_reconnects_total',
+  help: 'WS connects whose peer ID was seen disconnecting within the last 60s. Signals flaky networks or unstable agents.',
+  labelNames: ['channel'] as const,
+  registers: [register],
+});
+
+/* ---------- Sync write breakdown ---------- */
+
+export const syncWritesTotal = new Counter({
+  name: 'relay_sync_writes_total',
+  help: 'Successful writes to the sync store, by kind.',
+  labelNames: ['kind'] as const, // 'blob' | 'tombstone'
+  registers: [register],
+});
+
 /* ---------- Stats-derived gauges ---------- */
 /*
  * These wrap the existing in-memory `.stats` getters. We use `collect()` so
@@ -127,11 +187,23 @@ export interface StatsSources {
     uptime: number;
     channels: Record<string, { active: number; peak: number }>;
   };
-  syncStoreStats: () => { blobs: number; tombstones: number; locks: number };
+  syncStoreStats: () => { blobs: number; tombstones: number; locks: number; bytes: number };
   pairStoreStats: () => { mailboxes: number; slots: number; subscribers: number };
   tombstoneSubsStats: () => { keys: number; subscribers: number };
   pushStoreStats?: () => { agents: number; subscriptions: number };
 }
+
+/**
+ * Distribution of "devices per agent" — the size of `agentWatchers[agentId]`
+ * sets. Observed at the same rollup tick as ActiveKeys, one sample per
+ * agent that has at least one watcher.
+ */
+export const devicesPerAgent = new Histogram({
+  name: 'relay_devices_per_agent',
+  help: 'Distinct PWA peers actively watching one agent. One sample per agent per rollup tick.',
+  buckets: [1, 2, 3, 5, 10, 20, 50],
+  registers: [register],
+});
 
 export function wireGauges(sources: StatsSources): void {
   new Gauge({
@@ -191,6 +263,15 @@ export function wireGauges(sources: StatsSources): void {
     registers: [register],
     collect() {
       this.set(sources.syncStoreStats().tombstones);
+    },
+  });
+
+  new Gauge({
+    name: 'relay_sync_store_bytes',
+    help: 'Total bytes of ciphertext stored in the sync store (live entries + tombstones).',
+    registers: [register],
+    collect() {
+      this.set(sources.syncStoreStats().bytes);
     },
   });
 

@@ -16,18 +16,28 @@ import {
 import { createSyncRouter, parseSyncUrl } from './syncRoutes.js';
 import { TombstoneSubs } from './tombstoneSubs.js';
 import {
+  connectionBytesTotal,
+  connectionMessagesTotal,
+  devicesPerAgent,
   instrumentHttpRequest,
+  messageSizeBytes,
+  messagesByChannelTotal,
+  pairMailboxOutcomesTotal,
   pairPostErrorsTotal,
   pushNotificationsTotal,
   pushVerifyFailuresTotal,
   rateLimitHitsTotal,
+  reconnectsTotal,
+  register,
   startMetricsServer,
+  syncWritesTotal,
   wireGauges,
   wsConnectionDurationSeconds,
   wsConnectionsTotal,
   wsDisconnectionsTotal,
   type RouteLabel,
 } from './metrics.js';
+import { ActiveKeys } from './activeKeys.js';
 
 // Injected by esbuild at build time from package.json
 declare const VERSION: string;
@@ -36,13 +46,54 @@ const PORT = parseInt(process.env.PORT || '8080', 10);
 const METRICS_PORT = parseInt(process.env.METRICS_PORT || '9090', 10);
 const METRICS_HOST = process.env.METRICS_HOST || '127.0.0.1';
 
+const ROLLUP_INTERVAL_MS = 60 * 60_000; // 1h
+const RECONNECT_WINDOW_MS = 60_000;
+
+const activeKeys = new ActiveKeys({ registry: register, rollupIntervalMs: ROLLUP_INTERVAL_MS });
+activeKeys.start();
+
+// Per-WS-session message counters, drained at disconnect into a histogram.
+const connectionMessageCounts = new Map<string, number>();
+
+// Address → most recent disconnect timestamp. A connect within
+// RECONNECT_WINDOW_MS of a prior disconnect is counted as a reconnect.
+const recentDisconnects = new Map<string, number>();
+
+function trackFrame(from: Peer, raw: Buffer): void {
+  const size = raw.length;
+  connectionMessageCounts.set(
+    from.address,
+    (connectionMessageCounts.get(from.address) ?? 0) + 1,
+  );
+  activeKeys.recordTraffic(from.address, size);
+  messageSizeBytes.observe({ channel: from.channel }, size);
+  messagesByChannelTotal.inc({ channel: from.channel });
+}
+
+// Periodic prune so recentDisconnects doesn't accumulate stale addresses
+// from peers that never reconnect.
+setInterval(() => {
+  const cutoff = Date.now() - RECONNECT_WINDOW_MS;
+  for (const [addr, ts] of recentDisconnects) {
+    if (ts < cutoff) recentDisconnects.delete(addr);
+  }
+}, RECONNECT_WINDOW_MS).unref?.();
+
 const syncStore = new SyncStore();
-const pairStore = new PairStore();
+const pairStore = new PairStore({
+  onMailboxOutcome: (outcome) => {
+    pairMailboxOutcomesTotal.inc({ outcome });
+  },
+});
 pairStore.startGc();
 const tombstoneSubs = new TombstoneSubs();
 const syncRouter = createSyncRouter({
   store: syncStore,
   onTombstone: (keyHash, ciphertext) => tombstoneSubs.publish(keyHash, ciphertext),
+  onWriteSuccess: ({ kind, bytes, sigPubkey }) => {
+    syncWritesTotal.inc({ kind });
+    activeKeys.recordTraffic(`sigPubkey:${sigPubkey}`, bytes);
+  },
 });
 
 // Simple per-IP sliding-window rate limiter for pair + sync routes.
@@ -229,6 +280,14 @@ if (vapidPublicKey && vapidPrivateKey) {
 // agentId → Set of pwa peer addresses ('pwa:{pwaKey}') watching that agent
 const agentWatchers = new Map<string, Set<string>>();
 
+// Hourly: emit one sample per agent that has at least one watcher into the
+// devices-per-agent histogram. No labels, so cardinality is bounded.
+setInterval(() => {
+  for (const watchers of agentWatchers.values()) {
+    if (watchers.size > 0) devicesPerAgent.observe(watchers.size);
+  }
+}, ROLLUP_INTERVAL_MS).unref?.();
+
 // relay is set before any requests arrive (server listens after createRelay returns)
 let relay!: RelayInstance;
 
@@ -271,6 +330,15 @@ relay = createRelay({
   hooks: {
     onPeerConnect(peer: Peer, registry: PeerRegistryInterface) {
       wsConnectionsTotal.inc({ channel: peer.channel });
+      // If this address disconnected within the last minute, count as a reconnect.
+      const lastDisc = recentDisconnects.get(peer.address);
+      if (lastDisc !== undefined) {
+        if (Date.now() - lastDisc <= RECONNECT_WINDOW_MS) {
+          reconnectsTotal.inc({ channel: peer.channel });
+        }
+        recentDisconnects.delete(peer.address);
+      }
+      activeKeys.markActive(peer.address);
       console.log(`[CONNECT] ${peer.address} from ${peer.ip}`);
       if (peer.channel === 'agent') {
         // Notify key-based PWAs watching this agent that it came online
@@ -288,6 +356,14 @@ relay = createRelay({
       wsDisconnectionsTotal.inc({ channel: peer.channel });
       const durationSec = Math.max(0, (Date.now() - peer.connectedAt) / 1000);
       wsConnectionDurationSeconds.observe({ channel: peer.channel }, durationSec);
+      const msgs = connectionMessageCounts.get(peer.address) ?? 0;
+      connectionMessageCounts.delete(peer.address);
+      connectionMessagesTotal.observe({ channel: peer.channel }, msgs);
+      connectionBytesTotal.observe(
+        { channel: peer.channel },
+        (peer.bytesIn ?? 0) + (peer.bytesOut ?? 0),
+      );
+      recentDisconnects.set(peer.address, Date.now());
       console.log(`[DISCONNECT] ${peer.address}`);
       tombstoneSubs.unsubscribeAll(peer.ws);
       if (peer.channel === 'agent') {
@@ -315,7 +391,8 @@ relay = createRelay({
       }
     },
 
-    onMessage(peer: Peer, msg: unknown, _raw: Buffer, registry: PeerRegistryInterface) {
+    onMessage(peer: Peer, msg: unknown, raw: Buffer, registry: PeerRegistryInterface) {
+      trackFrame(peer, raw);
       if (typeof msg !== 'object' || msg === null) return;
       const m = msg as Record<string, unknown>;
 
@@ -358,6 +435,10 @@ relay = createRelay({
         tombstoneSubs.unsubscribe(keyHash, peer.ws);
         return true;
       }
+    },
+
+    onRoutedMessage(from: Peer, _to: Peer, _msg: unknown, raw: Buffer) {
+      trackFrame(from, raw);
     },
 
     onHttpRequest(req: IncomingMessage, res: ServerResponse, next: () => void) {
@@ -465,6 +546,8 @@ async function shutdown(signal: string): Promise<void> {
       // ignore
     }
   }
+  activeKeys.stop();
+  pairStore.stopGc();
   relay.close();
   process.exit(0);
 }

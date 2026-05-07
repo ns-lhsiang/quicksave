@@ -268,6 +268,7 @@ interface MutableSourceState {
   syncBlobs: number;
   syncTombstones: number;
   syncLocks: number;
+  syncBytes: number;
   pairMailboxes: number;
   pairSlots: number;
   pairSubscribers: number;
@@ -283,6 +284,7 @@ const sourceState: MutableSourceState = {
   syncBlobs: 0,
   syncTombstones: 0,
   syncLocks: 0,
+  syncBytes: 0,
   pairMailboxes: 0,
   pairSlots: 0,
   pairSubscribers: 0,
@@ -301,6 +303,7 @@ const sources: StatsSources = {
     blobs: sourceState.syncBlobs,
     tombstones: sourceState.syncTombstones,
     locks: sourceState.syncLocks,
+    bytes: sourceState.syncBytes,
   }),
   pairStoreStats: () => ({
     mailboxes: sourceState.pairMailboxes,
@@ -356,6 +359,7 @@ describe('wireGauges', () => {
     sourceState.pairSubscribers = 0;
     sourceState.tombstoneKeys = 0;
     sourceState.tombstoneSubs = 0;
+    sourceState.syncBytes = 0;
   });
 
   it('emits relay_uptime_seconds and relay_sync_blobs from the source', async () => {
@@ -365,6 +369,16 @@ describe('wireGauges', () => {
     const text = await register.metrics();
     expect(text).toContain('relay_uptime_seconds 42');
     expect(text).toContain('relay_sync_blobs 7');
+  });
+
+  it('emits relay_sync_store_bytes from the source', async () => {
+    sourceState.syncBytes = 12_345;
+    const text = await register.metrics();
+    expect(metricLineValue(text, 'relay_sync_store_bytes')).toBe(12345);
+
+    sourceState.syncBytes = 67_890;
+    const text2 = await register.metrics();
+    expect(metricLineValue(text2, 'relay_sync_store_bytes')).toBe(67890);
   });
 
   it('updates gauge values when source state changes between scrapes', async () => {

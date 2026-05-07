@@ -35,6 +35,15 @@ export interface CreateSyncRouterOptions {
    * identity without waiting for the periodic catch-up GET.
    */
   onTombstone?: (keyHash: string, ciphertext: string) => void;
+  /**
+   * Fired after any successful sync write. Used by metrics + ActiveKeys to
+   * attribute traffic to the signing identity (`sigPubkey`).
+   */
+  onWriteSuccess?: (info: {
+    kind: 'blob' | 'tombstone';
+    bytes: number;
+    sigPubkey: string;
+  }) => void;
 }
 
 /**
@@ -77,7 +86,7 @@ function parseEnvelope(raw: string): SignedSyncEnvelope | null {
 }
 
 export function createSyncRouter(opts: CreateSyncRouterOptions): SyncRouter {
-  const { store, onTombstone } = opts;
+  const { store, onTombstone, onWriteSuccess } = opts;
   const nonceCache = opts.nonceCache ?? new TtlNonceCache();
 
   function handle(
@@ -191,6 +200,11 @@ export function createSyncRouter(opts: CreateSyncRouterOptions): SyncRouter {
             try {
               store.putTombstone(keyHash, envelope.ciphertext!);
               onTombstone?.(keyHash, envelope.ciphertext!);
+              onWriteSuccess?.({
+                kind: 'tombstone',
+                bytes: envelope.ciphertext!.length,
+                sigPubkey: envelope.sigPubkey,
+              });
               writeJson(res, 200, { ok: true });
             } catch (err) {
               const message = err instanceof Error ? err.message : 'Unknown error';
@@ -203,6 +217,11 @@ export function createSyncRouter(opts: CreateSyncRouterOptions): SyncRouter {
           } else {
             try {
               store.put(keyHash, envelope.ciphertext!);
+              onWriteSuccess?.({
+                kind: 'blob',
+                bytes: envelope.ciphertext!.length,
+                sigPubkey: envelope.sigPubkey,
+              });
               writeJson(res, 200, { ok: true });
             } catch (err) {
               const message = err instanceof Error ? err.message : 'Unknown error';

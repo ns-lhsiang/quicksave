@@ -510,3 +510,123 @@ describe('onTombstone callback', () => {
     expect(calls.length).toBe(before);
   });
 });
+
+describe('onWriteSuccess callback', () => {
+  // Independent local relay so we can wire onWriteSuccess in isolation.
+  const PORT = 18094;
+  const URL_BASE = `http://localhost:${PORT}`;
+  let localRelay: RelayInstance;
+  interface WriteCall {
+    kind: 'blob' | 'tombstone';
+    bytes: number;
+    sigPubkey: string;
+  }
+  const writes: WriteCall[] = [];
+
+  beforeAll(async () => {
+    const store = new SyncStore();
+    const router = createSyncRouter({
+      store,
+      onWriteSuccess: (info) => writes.push(info),
+    });
+    localRelay = createRelay({
+      port: PORT,
+      keyStore: false,
+      blobStore: false,
+      channels: [{ name: 'agent', onDuplicate: 'reject' }],
+      hooks: {
+        onHttpRequest(req, res, next) {
+          const sync = parseSyncUrl(req.url);
+          if (sync) {
+            router.handle(req, res, sync.keyHash, sync.subpath);
+            return;
+          }
+          next();
+        },
+      },
+    });
+  });
+
+  afterAll(async () => {
+    localRelay.close();
+    await new Promise<void>((resolve) =>
+      localRelay.server.close(() => resolve()),
+    );
+  });
+
+  it('fires kind=blob with byte count and sigPubkey on a successful blob write', async () => {
+    const keyHash = randomHash();
+    const kp = nacl.sign.keyPair();
+    const ciphertext = 'hello-blob';
+    const env = buildEnvelope('sync-write', keyHash, ciphertext, kp);
+
+    const before = writes.length;
+    const res = await testFetch(`${URL_BASE}/sync/${keyHash}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(env),
+    });
+    expect(res.status).toBe(200);
+    expect(writes.length).toBe(before + 1);
+    expect(writes[before].kind).toBe('blob');
+    expect(writes[before].bytes).toBe(ciphertext.length);
+    expect(writes[before].sigPubkey).toBe(env.sigPubkey);
+  });
+
+  it('fires kind=tombstone on a successful tombstone write', async () => {
+    const keyHash = randomHash();
+    const kp = nacl.sign.keyPair();
+    const ciphertext = '{"type":"rotated"}';
+    const env = buildEnvelope('sync-tombstone', keyHash, ciphertext, kp);
+
+    const before = writes.length;
+    const res = await testFetch(`${URL_BASE}/sync/${keyHash}/tombstone`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(env),
+    });
+    expect(res.status).toBe(200);
+    expect(writes.length).toBe(before + 1);
+    expect(writes[before].kind).toBe('tombstone');
+    expect(writes[before].bytes).toBe(ciphertext.length);
+  });
+
+  it('does NOT fire when signature verification fails', async () => {
+    const keyHash = randomHash();
+    const kp = nacl.sign.keyPair();
+    const env = buildEnvelope('sync-write', keyHash, 'data', kp);
+    // Corrupt the sig — server should reject before hitting onWriteSuccess.
+    const corrupted = { ...env, sig: 'A'.repeat(env.sig.length) };
+
+    const before = writes.length;
+    const res = await testFetch(`${URL_BASE}/sync/${keyHash}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(corrupted),
+    });
+    expect(res.status).toBe(401);
+    expect(writes.length).toBe(before);
+  });
+
+  it('does NOT fire on duplicate-tombstone 409', async () => {
+    const keyHash = randomHash();
+    const kp = nacl.sign.keyPair();
+    const env1 = buildEnvelope('sync-tombstone', keyHash, 'first', kp);
+    const first = await testFetch(`${URL_BASE}/sync/${keyHash}/tombstone`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(env1),
+    });
+    expect(first.status).toBe(200);
+
+    const before = writes.length;
+    const env2 = buildEnvelope('sync-tombstone', keyHash, 'second', kp);
+    const second = await testFetch(`${URL_BASE}/sync/${keyHash}/tombstone`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(env2),
+    });
+    expect(second.status).toBe(409);
+    expect(writes.length).toBe(before);
+  });
+});

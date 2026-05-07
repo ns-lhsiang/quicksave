@@ -386,4 +386,85 @@ describe('PairStore', () => {
       expect(store.stats.subscribers).toBe(1);
     });
   });
+
+  describe('onMailboxOutcome', () => {
+    it('fires "deleted" when deleteMailbox is called on an existing mailbox', () => {
+      const outcomes: string[] = [];
+      const store = new PairStore({
+        onMailboxOutcome: (o) => outcomes.push(o),
+      });
+      store.postSlot('addr', { data: 'x' });
+      store.deleteMailbox('addr');
+      expect(outcomes).toEqual(['deleted']);
+    });
+
+    it('does not fire on deleteMailbox for an unknown mailbox', () => {
+      const outcomes: string[] = [];
+      const store = new PairStore({
+        onMailboxOutcome: (o) => outcomes.push(o),
+      });
+      store.deleteMailbox('never-existed');
+      expect(outcomes).toEqual([]);
+    });
+
+    it('fires "expired_with_slots" via gc() when slots were posted', () => {
+      const clock = makeClock();
+      const outcomes: string[] = [];
+      const store = new PairStore({
+        now: clock.now,
+        ttlMs: 100,
+        onMailboxOutcome: (o) => outcomes.push(o),
+      });
+      store.postSlot('addr', { data: 'x' });
+      clock.advance(200);
+      store.gc();
+      expect(outcomes).toEqual(['expired_with_slots']);
+    });
+
+    it('fires "expired_empty" via gc() when subscribe created an empty mailbox', () => {
+      const clock = makeClock();
+      const outcomes: string[] = [];
+      const store = new PairStore({
+        now: clock.now,
+        ttlMs: 100,
+        onMailboxOutcome: (o) => outcomes.push(o),
+      });
+      // subscribe creates an empty mailbox (initiator opens but no joiner posts)
+      store.subscribe('addr', () => {});
+      clock.advance(200);
+      store.gc();
+      expect(outcomes).toEqual(['expired_empty']);
+    });
+
+    it('fires the right outcome when getSlots lazy-expires a mailbox', () => {
+      const clock = makeClock();
+      const outcomes: string[] = [];
+      const store = new PairStore({
+        now: clock.now,
+        ttlMs: 100,
+        onMailboxOutcome: (o) => outcomes.push(o),
+      });
+      store.postSlot('addr', { data: 'x' });
+      clock.advance(200);
+      // getSlots should trip the inline expiry path.
+      const slots = store.getSlots('addr');
+      expect(slots).toEqual([]);
+      expect(outcomes).toEqual(['expired_with_slots']);
+    });
+
+    it('does not double-fire when an already-expired mailbox is gc()d', () => {
+      const clock = makeClock();
+      const outcomes: string[] = [];
+      const store = new PairStore({
+        now: clock.now,
+        ttlMs: 100,
+        onMailboxOutcome: (o) => outcomes.push(o),
+      });
+      store.postSlot('addr', { data: 'x' });
+      clock.advance(200);
+      store.getSlots('addr'); // lazy-expires
+      store.gc(); // should be a no-op
+      expect(outcomes).toEqual(['expired_with_slots']);
+    });
+  });
 });

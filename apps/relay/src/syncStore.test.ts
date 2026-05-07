@@ -45,13 +45,25 @@ describe('SyncStore', () => {
   });
 
   it('should track stats correctly', () => {
-    expect(store.stats).toEqual({ blobs: 0, tombstones: 0, total: 0, locks: 0 });
+    expect(store.stats).toEqual({ blobs: 0, tombstones: 0, total: 0, locks: 0, bytes: 0 });
 
     store.put('key1', 'data1');
     store.put('key2', 'data2');
-    expect(store.stats).toEqual({ blobs: 2, tombstones: 0, total: 2, locks: 0 });
+    expect(store.stats).toEqual({
+      blobs: 2,
+      tombstones: 0,
+      total: 2,
+      locks: 0,
+      bytes: 'data1'.length + 'data2'.length,
+    });
 
     store.putTombstone('key3', 'tombstone-data');
-    expect(store.stats).toEqual({ blobs: 2, tombstones: 1, total: 3, locks: 0 });
+    expect(store.stats).toEqual({
+      blobs: 2,
+      tombstones: 1,
+      total: 3,
+      locks: 0,
+      bytes: 'data1'.length + 'data2'.length + 'tombstone-data'.length,
+    });
   });
 });

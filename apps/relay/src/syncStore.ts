@@ -116,9 +116,11 @@ export class SyncStore {
   get stats() {
     let blobs = 0;
     let tombstones = 0;
+    let bytes = 0;
     for (const entry of this.entries.values()) {
       if (entry.isTombstone) tombstones++;
       else blobs++;
+      bytes += entry.data.length;
     }
     const now = this.config.now();
     let activeLocks = 0;
@@ -130,6 +132,7 @@ export class SyncStore {
       tombstones,
       total: this.entries.size,
       locks: activeLocks,
+      bytes,
     };
   }
 }
