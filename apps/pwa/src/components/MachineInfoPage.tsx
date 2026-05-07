@@ -310,39 +310,64 @@ export function MachineInfoPage({
               </p>
             ) : (
               <div className="divide-y divide-slate-700/40 rounded-lg bg-slate-700/30 overflow-hidden">
-                {machineProjects.map((project) => (
-                  <div
-                    key={project.projectId}
-                    className="w-full flex items-center gap-3 px-3 py-2.5"
-                  >
-                    <span
-                      className={`w-1.5 h-1.5 rounded-full shrink-0 ${project.isConnected ? 'bg-emerald-400' : 'bg-slate-500'}`}
-                    />
-                    <div className="flex-1 min-w-0 text-[12px] text-slate-300 font-mono break-all">
-                      {project.cwd}
-                    </div>
-                    {project.sessionCount > 0 && !editMode && (
-                      <span className="text-[11px] text-slate-400 shrink-0">
-                        <FormattedMessage
-                          id="machineInfo.projects.sessionCount"
-                          values={{ count: project.sessionCount }}
-                        />
-                      </span>
-                    )}
-                    {editMode && canDelete && (
-                      <button
-                        type="button"
-                        onClick={() => setPendingDelete({ cwd: project.cwd, displayName: project.displayName })}
-                        className="p-1.5 rounded-md text-red-400 hover:bg-red-500/15 transition-colors shrink-0"
-                        aria-label="Delete project"
+                {machineProjects.map((project) => {
+                  const inner = (
+                    <>
+                      <span
+                        className={`w-1.5 h-1.5 rounded-full shrink-0 ${project.isConnected ? 'bg-emerald-400' : 'bg-slate-500'}`}
+                      />
+                      <div className="flex-1 min-w-0 text-[12px] text-slate-300 font-mono break-all">
+                        {project.cwd}
+                      </div>
+                      {project.sessionCount > 0 && !editMode && (
+                        <span className="text-[11px] text-slate-400 shrink-0">
+                          <FormattedMessage
+                            id="machineInfo.projects.sessionCount"
+                            values={{ count: project.sessionCount }}
+                          />
+                        </span>
+                      )}
+                    </>
+                  );
+
+                  if (editMode) {
+                    return (
+                      <div
+                        key={project.projectId}
+                        className="w-full flex items-center gap-3 px-3 py-2.5"
                       >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M1 7h22M9 7V4a1 1 0 011-1h4a1 1 0 011 1v3" />
-                        </svg>
-                      </button>
-                    )}
-                  </div>
-                ))}
+                        {inner}
+                        {canDelete && (
+                          <button
+                            type="button"
+                            onClick={() => setPendingDelete({ cwd: project.cwd, displayName: project.displayName })}
+                            className="p-1.5 rounded-md text-red-400 hover:bg-red-500/15 transition-colors shrink-0"
+                            aria-label="Delete project"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M1 7h22M9 7V4a1 1 0 011-1h4a1 1 0 011 1v3" />
+                            </svg>
+                          </button>
+                        )}
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <button
+                      key={project.projectId}
+                      type="button"
+                      onClick={() => navigate(`/settings/m/${agentId}/p/${project.projectId}/archived`)}
+                      className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-slate-700/50 transition-colors text-left"
+                      aria-label={`Restore archived tasks for ${project.cwd}`}
+                    >
+                      {inner}
+                      <svg className="w-3.5 h-3.5 text-slate-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      </svg>
+                    </button>
+                  );
+                })}
               </div>
             )}
           </div>

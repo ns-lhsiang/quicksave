@@ -50,6 +50,9 @@
   "settings.machines.edit.nickname.placeholder": "e.g., Work laptop, Home desktop",
   "settings.machines.edit.save": "Save changes",
 
+  "archivedSessions.title": "Archived tasks",
+  "archivedSessions.unknownProject": "Project path unknown — connect to this machine first.",
+
   "machineInfo.fallback.title": "Machine",
   "machineInfo.cliAgent.version": "Version",
   "machineInfo.cliAgent.latest": "Latest",

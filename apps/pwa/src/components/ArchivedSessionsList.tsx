@@ -11,10 +11,11 @@ interface ArchivedSessionsListProps {
   cwd: string;
   onListArchived: (cwd: string, offset: number, limit: number) => Promise<SessionListArchivedResponsePayload | null>;
   onRestore: (sessionId: string, cwd: string) => Promise<void>;
+  defaultExpanded?: boolean;
 }
 
-export function ArchivedSessionsList({ cwd, onListArchived, onRestore }: ArchivedSessionsListProps) {
-  const [expanded, setExpanded] = useState(false);
+export function ArchivedSessionsList({ cwd, onListArchived, onRestore, defaultExpanded = false }: ArchivedSessionsListProps) {
+  const [expanded, setExpanded] = useState(defaultExpanded);
   const [entries, setEntries] = useState<BroadcastSessionEntry[]>([]);
   const [total, setTotal] = useState(0);
   const [offset, setOffset] = useState(0);

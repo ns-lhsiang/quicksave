@@ -50,6 +50,9 @@
   "settings.machines.edit.nickname.placeholder": "例如:工作筆電、家用桌機",
   "settings.machines.edit.save": "儲存變更",
 
+  "archivedSessions.title": "封存任務",
+  "archivedSessions.unknownProject": "專案路徑未知，請先連線到這台機器。",
+
   "machineInfo.fallback.title": "機器",
   "machineInfo.cliAgent.version": "版本",
   "machineInfo.cliAgent.latest": "最新版",

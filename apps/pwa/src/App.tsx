@@ -52,6 +52,7 @@ import { buildOfferMessage, getCurrentSubscription, notificationPermission } fro
 import { GitIdentityModal } from './components/GitIdentityModal';
 import { SettingsPage } from './components/SettingsPage';
 import { MachineInfoPage } from './components/MachineInfoPage';
+import { ArchivedSessionsPage } from './components/ArchivedSessionsPage';
 import { AddNewPage } from './components/AddNewPage';
 import { JoinGroupPage } from './routes/JoinGroupPage';
 import { ProjectList } from './components/ProjectList';
@@ -1029,6 +1030,7 @@ function AppContent() {
                 <Route path="/add" element={<AddNewPage onSetActiveAgent={setActiveAgent} onBrowseDirectory={browseDirectory} onCloneRepo={cloneRepo} onAddCodingPath={addCodingPath} onConnect={handleConnect} onStartSession={startSession} />} />
                 <Route path="/settings" element={<SettingsPage onSendApiKeyToAgent={isConnected ? setApiKey : undefined} onPushOffer={handlePushOffer} />} />
                 <Route path="/settings/m/:agentId" element={<MachineInfoPage onSetActiveAgent={setActiveAgent} onCheckAgentUpdate={checkAgentUpdate} onUpdateAgent={updateAgent} onRestartAgent={restartAgent} onDeleteProject={handleDeleteProject} />} />
+                <Route path="/settings/m/:agentId/p/:projectId/archived" element={<ArchivedSessionsPage onSetActiveAgent={setActiveAgent} onListArchivedSessions={listArchivedSessions} onRestoreSession={restoreSession} />} />
                 <Route path="/connect/:agentId" element={<ConnectHandler onConnect={handleConnect} />} />
                 <Route path="/pair" element={<JoinGroupPage />} />
                 <Route path="*" element={null} />
@@ -1049,6 +1051,7 @@ function AppContent() {
           <Route path="/add" element={<AddNewPage onSetActiveAgent={setActiveAgent} onBrowseDirectory={browseDirectory} onCloneRepo={cloneRepo} onAddCodingPath={addCodingPath} onConnect={handleConnect} onStartSession={startSession} />} />
           <Route path="/settings" element={<SettingsPage onSendApiKeyToAgent={isConnected ? setApiKey : undefined} onPushOffer={handlePushOffer} />} />
           <Route path="/settings/m/:agentId" element={<MachineInfoPage onSetActiveAgent={setActiveAgent} onCheckAgentUpdate={checkAgentUpdate} onUpdateAgent={updateAgent} onRestartAgent={restartAgent} onDeleteProject={handleDeleteProject} />} />
+          <Route path="/settings/m/:agentId/p/:projectId/archived" element={<ArchivedSessionsPage onSetActiveAgent={setActiveAgent} onListArchivedSessions={listArchivedSessions} onRestoreSession={restoreSession} />} />
           <Route path="/connect/:agentId" element={<ConnectHandler onConnect={handleConnect} />} />
           <Route path="/pair" element={<JoinGroupPage />} />
         </Routes>
