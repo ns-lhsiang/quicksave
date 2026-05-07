@@ -254,7 +254,6 @@ export function ClaudePanel({
     if (!draftKey) return;
     const saved = localStorage.getItem(draftKey) ?? '';
     setPromptInput(saved);
-    // Resize textarea to match restored content
     requestAnimationFrame(() => {
       if (inputRef.current) {
         const el = inputRef.current;
@@ -264,24 +263,6 @@ export function ClaudePanel({
       }
     });
   }, [draftKey]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // iOS mitigation: the first real focus on a textarea reports
-  // visualViewport.height without subtracting the keyboard accessory bar,
-  // so the bar overlaps the input. Pre-focus+blur once on mount to prime
-  // WebKit's cached accessory-bar height before the user taps in.
-  const hasPrimedFocusRef = useRef(false);
-  useEffect(() => {
-    if (hasPrimedFocusRef.current) return;
-    if (!isChat) return;
-    const el = inputRef.current;
-    if (!el) return;
-    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
-      || (navigator.platform === 'MacIntel' && (navigator.maxTouchPoints ?? 0) > 1);
-    if (!isIOS) return;
-    hasPrimedFocusRef.current = true;
-    el.focus({ preventScroll: true });
-    el.blur();
-  }, [isChat]);
 
   const connectionState = useConnectionStore((s) => s.state);
   const agentOnline = useConnectionStore((s) => s.agentOnline);
@@ -410,6 +391,7 @@ export function ClaudePanel({
     }));
 
     setPromptInput('');
+    if (inputRef.current) inputRef.current.style.height = 'auto';
     setPendingAttachments([]);
     if (draftSaveTimer.current) clearTimeout(draftSaveTimer.current);
     if (draftKey) localStorage.removeItem(draftKey);
@@ -603,6 +585,7 @@ export function ClaudePanel({
       if (e.key === 'Escape') {
         e.preventDefault();
         setPromptInput('');
+        if (inputRef.current) inputRef.current.style.height = 'auto';
         return;
       }
     }
@@ -626,7 +609,6 @@ export function ClaudePanel({
     }, 3000);
   }, [draftKey]);
 
-  // Auto-resize textarea to fit content, persist draft to localStorage
   const handleInputChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const value = e.target.value;
     setPromptInput(value);
