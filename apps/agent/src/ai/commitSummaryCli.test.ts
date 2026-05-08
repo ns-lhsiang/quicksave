@@ -178,7 +178,7 @@ describe('CommitSummaryCliService', () => {
       }));
       const svc = new CommitSummaryCliService();
       const out = await svc.generateSummary({ repoPath: '/r' });
-      expect(out.description).toBe('Commit-message-by: Quicksave AI <save@quicksave.dev>');
+      expect(out.description).toBe('Commit-message-by: Quicksave AI');
     });
   });
 

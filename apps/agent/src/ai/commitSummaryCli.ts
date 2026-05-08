@@ -440,7 +440,7 @@ function tryParseCommitJson(text: string): { summary: string; description?: stri
 }
 
 function appendAttribution(description: string | undefined): string {
-  const trailer = 'Commit-message-by: Quicksave AI <save@quicksave.dev>';
+  const trailer = 'Commit-message-by: Quicksave AI';
   return description ? `${description}\n\n${trailer}` : trailer;
 }
 

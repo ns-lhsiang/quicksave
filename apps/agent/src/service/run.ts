@@ -107,7 +107,7 @@ export async function runDaemon(): Promise<void> {
   }
 
   // 3. Load config and managed repos
-  const config = getOrCreateConfig('wss://signal.quicksave.dev');
+  const config = getOrCreateConfig('ws://localhost:8080');
 
   const repoPaths = getManagedRepos();
   const codingPaths = getManagedCodingPaths();
@@ -664,7 +664,7 @@ function registerDaemonMethods(
   ipcServer.registerMethod('get-pairing-info', (): PairingInfoResult => {
     const current = loadConfig() ?? config;
     const signPk = current.signKeyPair.publicKey;
-    const pairingUrl = `https://quicksave.dev/#/connect/${current.agentId}?pk=${encodeURIComponent(current.keyPair.publicKey)}&spk=${encodeURIComponent(signPk)}&name=${encodeURIComponent(hostname())}`;
+    const pairingUrl = `http://localhost:5173/#/connect/${current.agentId}?pk=${encodeURIComponent(current.keyPair.publicKey)}&spk=${encodeURIComponent(signPk)}&name=${encodeURIComponent(hostname())}`;
     return {
       agentId: current.agentId,
       publicKey: current.keyPair.publicKey,

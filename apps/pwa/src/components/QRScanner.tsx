@@ -33,7 +33,7 @@ export function QRScanner({ onScan, onPairingScan, onError }: QRScannerProps) {
     try {
       const url = new URL(decodedText);
 
-      // Agent URL format: https://quicksave.dev/#/connect/{agentId}?pk={key}&spk={signKey}&name={name}
+      // Agent URL format: http://localhost:5173/#/connect/{agentId}?pk={key}&spk={signKey}&name={name}
       const hash = url.hash; // e.g. "#/connect/abc123?pk=xyz&spk=abc&name=MyPC"
       const connectMatch = hash.match(/^#\/connect\/([^?]+)\??(.*)/);
       if (connectMatch) {

@@ -77,7 +77,7 @@ export function renderUnitText(execStart: string): string {
   return [
     '[Unit]',
     'Description=Quicksave agent daemon',
-    'Documentation=https://quicksave.dev',
+    'Documentation=https://github.com/ns-lhsiang/quicksave',
     'After=network-online.target',
     'Wants=network-online.target',
     '',

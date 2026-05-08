@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Initial server setup for quicksave.dev
+# Initial server setup for local quicksave relay
 # Supports both staging and production on the same server
 #
 # Safe to re-run: preserves existing deploy tokens and relay env files.
@@ -12,8 +12,8 @@
 set -e
 
 # Configuration - update these
-DOMAIN="quicksave.dev"
-GITHUB_REPO="KingYoung-Sumicom/quicksave"
+DOMAIN="localhost"
+GITHUB_REPO="ns-lhsiang/quicksave"
 
 # Derived domains
 STAGING_DOMAIN="staging.${DOMAIN}"
@@ -147,7 +147,7 @@ for env_name in production staging; do
 # Generate a key pair with: npx web-push generate-vapid-keys
 VAPID_PUBLIC_KEY=
 VAPID_PRIVATE_KEY=
-VAPID_SUBJECT=mailto:admin@quicksave.dev
+VAPID_SUBJECT=mailto:admin@localhost
 # Optional: where push subscriptions are persisted on disk.
 # PUSH_STORE_PATH=/var/lib/quicksave/push-store.json
 RELAY_ENV

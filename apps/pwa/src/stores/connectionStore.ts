@@ -92,7 +92,7 @@ const getDefaultSignalingServer = () => {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     return `${protocol}//${window.location.host}`;
   }
-  return 'wss://signal.quicksave.dev';
+  return 'ws://localhost:8080';
 };
 
 const DEFAULT_SIGNALING_SERVER = getDefaultSignalingServer();

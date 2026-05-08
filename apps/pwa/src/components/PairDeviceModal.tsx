@@ -38,7 +38,7 @@ export function PairDeviceModal({ onClose }: PairDeviceModalProps) {
     () =>
       typeof window !== 'undefined'
         ? `${window.location.protocol}//${window.location.host}`
-        : 'https://pwa.quicksave.dev',
+        : `${window.location.protocol}//${window.location.host}`,
     [],
   );
 

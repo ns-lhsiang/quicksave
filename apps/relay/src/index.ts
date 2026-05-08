@@ -257,7 +257,7 @@ if (vapidPublicKey && vapidPrivateKey) {
   const pushService = new PushService({
     vapidPublicKey,
     vapidPrivateKey,
-    vapidSubject: process.env.VAPID_SUBJECT ?? 'mailto:admin@quicksave.dev',
+    vapidSubject: process.env.VAPID_SUBJECT ?? 'mailto:admin@localhost',
   });
   pushRoutes = createPushRoutes({
     store: pushStore,

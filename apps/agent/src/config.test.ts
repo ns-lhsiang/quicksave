@@ -53,7 +53,7 @@ const baseConfig: AgentConfig = {
   agentId: 'test-agent',
   keyPair: { publicKey: 'pk', secretKey: 'sk' },
   signKeyPair: { publicKey: 'sign-pk', secretKey: 'sign-sk' },
-  signalingServer: 'wss://signal.quicksave.dev',
+  signalingServer: 'ws://localhost:8080',
 };
 
 function mockConfigFile(config: AgentConfig | null) {
@@ -135,7 +135,7 @@ describe('getOrCreateConfig', () => {
   it('creates a new config when none exists', () => {
     mockedExistsSync.mockReturnValue(false);
     const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
-    const config = getOrCreateConfig('wss://signal.quicksave.dev');
+    const config = getOrCreateConfig('ws://localhost:8080');
     expect(config.agentId).toBe('mock-agent-id');
     consoleSpy.mockRestore();
   });
@@ -150,7 +150,7 @@ describe('getOrCreateConfig', () => {
       closed: false,
     };
     mockConfigFile(stableConfig);
-    const config = getOrCreateConfig('wss://signal.quicksave.dev');
+    const config = getOrCreateConfig('ws://localhost:8080');
     expect(config).toEqual(stableConfig);
     expect(mockedWriteFileSync).not.toHaveBeenCalled();
   });
@@ -166,7 +166,7 @@ describe('getOrCreateConfig', () => {
     const legacyConfig = { ...baseConfig } as any;
     delete legacyConfig.signKeyPair;
     mockConfigFile(legacyConfig);
-    const config = getOrCreateConfig('wss://signal.quicksave.dev');
+    const config = getOrCreateConfig('ws://localhost:8080');
     expect(config.signKeyPair).toEqual({ publicKey: 'mock-sign-pk', secretKey: 'mock-sign-sk' });
     expect(mockedWriteFileSync).toHaveBeenCalled();
   });
@@ -308,7 +308,7 @@ describe('peer PWA TOFU pinning', () => {
   it('getOrCreateConfig backfills peerPWA* as null on pre-TOFU configs', () => {
     // Legacy config missing the peerPWA* fields entirely.
     mockConfigFile(baseConfig);
-    const config = getOrCreateConfig('wss://signal.quicksave.dev');
+    const config = getOrCreateConfig('ws://localhost:8080');
     expect(config.peerPWAPublicKey).toBeNull();
     expect(config.peerPWASignPublicKey).toBeNull();
     // Should have rewritten the file with the normalized fields.
@@ -327,7 +327,7 @@ describe('peer PWA TOFU pinning', () => {
       peerPWASignPublicKey: 'peer-sign-pk',
       closed: false,
     });
-    const config = getOrCreateConfig('wss://signal.quicksave.dev');
+    const config = getOrCreateConfig('ws://localhost:8080');
     expect(config.peerPWAPublicKey).toBe('peer-pk');
     expect(config.peerPWASignPublicKey).toBe('peer-sign-pk');
     expect(mockedWriteFileSync).not.toHaveBeenCalled();

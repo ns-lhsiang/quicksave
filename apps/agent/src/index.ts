@@ -140,7 +140,7 @@ program
       console.log(`  Public Key:  ${config.keyPair.publicKey} (NEW)\n`);
       console.log('All existing PWA connections are now invalid.');
       console.log('Re-scan the QR code on your trusted devices to reconnect.\n');
-      const pairingUrl = `https://quicksave.dev/#/connect/${config.agentId}?pk=${encodeURIComponent(config.keyPair.publicKey)}&spk=${encodeURIComponent(config.signKeyPair.publicKey)}&name=${encodeURIComponent(hostname())}`;
+      const pairingUrl = `http://localhost:5173/#/connect/${config.agentId}?pk=${encodeURIComponent(config.keyPair.publicKey)}&spk=${encodeURIComponent(config.signKeyPair.publicKey)}&name=${encodeURIComponent(hostname())}`;
       console.log('Connection URL:');
       console.log(`  ${pairingUrl}\n`);
       qrcode.generate(pairingUrl, { small: true });

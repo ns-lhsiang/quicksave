@@ -21,13 +21,13 @@ function verifyCanonicalSig(
 
 describe('httpBaseFromSignalingUrl', () => {
   it('wss → https', () => {
-    expect(httpBaseFromSignalingUrl('wss://signal.quicksave.dev')).toBe('https://signal.quicksave.dev');
+    expect(httpBaseFromSignalingUrl('wss://relay.example.com')).toBe('https://relay.example.com');
   });
   it('ws → http', () => {
     expect(httpBaseFromSignalingUrl('ws://localhost:3001')).toBe('http://localhost:3001');
   });
   it('drops trailing paths', () => {
-    expect(httpBaseFromSignalingUrl('wss://signal.quicksave.dev/agent/abc')).toBe('https://signal.quicksave.dev');
+    expect(httpBaseFromSignalingUrl('wss://relay.example.com/agent/abc')).toBe('https://relay.example.com');
   });
 });
 

@@ -79,8 +79,8 @@ describe('buildPairUrl / parsePairUrl', () => {
   const SAMPLE_KEY = encodeBase64(make32ByteSecret(0x07));
 
   it('builds the expected URL shape (HashRouter /#/pair?k=...)', () => {
-    const url = buildPairUrl('https://pwa.quicksave.dev', SAMPLE_KEY);
-    expect(url.startsWith('https://pwa.quicksave.dev/#/pair?k=')).toBe(true);
+    const url = buildPairUrl('http://localhost:5173', SAMPLE_KEY);
+    expect(url.startsWith('http://localhost:5173/#/pair?k=')).toBe(true);
     const frag = url.split('#')[1];
     const prefix = '/pair?k=';
     expect(frag.startsWith(prefix)).toBe(true);
@@ -91,13 +91,13 @@ describe('buildPairUrl / parsePairUrl', () => {
   });
 
   it('strips trailing slashes from baseUrl', () => {
-    const a = buildPairUrl('https://pwa.quicksave.dev', SAMPLE_KEY);
-    const b = buildPairUrl('https://pwa.quicksave.dev/', SAMPLE_KEY);
+    const a = buildPairUrl('http://localhost:5173', SAMPLE_KEY);
+    const b = buildPairUrl('http://localhost:5173/', SAMPLE_KEY);
     expect(a).toBe(b);
   });
 
   it('round-trips through parsePairUrl', () => {
-    const url = buildPairUrl('https://pwa.quicksave.dev', SAMPLE_KEY);
+    const url = buildPairUrl('http://localhost:5173', SAMPLE_KEY);
     const parsed = parsePairUrl(url);
     // The key may or may not retain its = padding; compare bytes.
     const originalBytes = decodeBase64(SAMPLE_KEY);
@@ -267,13 +267,13 @@ describe('PairClient.createInvite', () => {
 
   it('returns pairUrl/qrData/addr/expiresAt consistent with inputs', async () => {
     const invite = await client.createInvite({
-      baseUrl: 'https://pwa.quicksave.dev',
+      baseUrl: 'http://localhost:5173',
       masterSecret: make32ByteSecret(),
       now: FIXED_NOW,
     });
 
     expect(invite.pairUrl).toBe(
-      buildPairUrl('https://pwa.quicksave.dev', invite.eA_pubB64),
+      buildPairUrl('http://localhost:5173', invite.eA_pubB64),
     );
     expect(invite.qrData).toBe(invite.pairUrl);
     expect(invite.addr).toBe(pairAddrFromPubkey(invite.eA_pubB64));
@@ -451,7 +451,7 @@ describe('PairClient end-to-end pairing', () => {
 
     // A side: invite.
     const invite = await client.createInvite({
-      baseUrl: 'https://pwa.quicksave.dev',
+      baseUrl: 'http://localhost:5173',
       masterSecret: MASTER,
       now: FIXED_NOW,
     });
@@ -505,7 +505,7 @@ describe('SAS mismatch paths', () => {
 
   async function setup() {
     const invite = await client.createInvite({
-      baseUrl: 'https://pwa.quicksave.dev',
+      baseUrl: 'http://localhost:5173',
       masterSecret: make32ByteSecret(0x5a),
       now: FIXED_NOW,
     });
@@ -562,7 +562,7 @@ describe('SAS collision path', () => {
 
   it('returns collision when two slots share the same eB_pubB64', async () => {
     const invite = await client.createInvite({
-      baseUrl: 'https://pwa.quicksave.dev',
+      baseUrl: 'http://localhost:5173',
       masterSecret: make32ByteSecret(0x3c),
       now: FIXED_NOW,
     });
@@ -617,7 +617,7 @@ describe('ciphertext unreadability', () => {
 
   it('a third party cannot decrypt the join slot blob', async () => {
     const invite = await client.createInvite({
-      baseUrl: 'https://pwa.quicksave.dev',
+      baseUrl: 'http://localhost:5173',
       masterSecret: make32ByteSecret(0x77),
       now: FIXED_NOW,
     });

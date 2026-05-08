@@ -7,7 +7,7 @@
 #
 set -e
 
-DOMAIN="${DOMAIN:-quicksave.dev}"
+DOMAIN="${DOMAIN:-localhost}"
 STAGING_DOMAIN="staging.${DOMAIN}"
 SIGNAL_DOMAIN="signal.${DOMAIN}"
 SIGNAL_STAGING_DOMAIN="signal-staging.${DOMAIN}"

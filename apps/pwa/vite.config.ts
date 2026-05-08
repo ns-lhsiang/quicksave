@@ -10,7 +10,7 @@ export default defineConfig({
   server: {
     host: true, // Allow external access (needed for ngrok)
     port: 5173,
-    allowedHosts: ['.ngrok-free.app', '.ngrok.io', '.quicksave.dev', 'dev.quicksave.dev'],
+    allowedHosts: ['.ngrok-free.app', '.ngrok.io', 'localhost'],
   },
   plugins: [
     signalingServerPlugin(),
@@ -59,8 +59,7 @@ export default defineConfig({
           },
         ],
         url_handlers: [
-          { origin: 'https://pwa.quicksave.dev' },
-          { origin: 'https://quicksave.dev' },
+          { origin: 'http://localhost:5173' },
         ],
       },
     }),

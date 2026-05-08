@@ -10,7 +10,7 @@ const STATUS_PROMPT = [
 ].join('\n\n');
 
 const COMMIT_TRAILER_PROMPT =
-  'When you create git commits in a quicksave session, add `Co-Authored-By: Quicksave AI <save@quicksave.dev>` as a co-author trailer alongside whatever your platform default already adds (e.g. `Co-Authored-By: Claude ...`). Quicksave is the spawning context and should be credited in addition to — not instead of — the underlying model. Both trailers, one per line, after a blank line below the body.';
+  'When you create git commits in a quicksave session, add `Co-Authored-By: Quicksave AI` as a co-author trailer alongside whatever your platform default already adds (e.g. `Co-Authored-By: Claude ...`). Quicksave is the spawning context and should be credited in addition to — not instead of — the underlying model. Both trailers, one per line, after a blank line below the body.';
 
 const PLATFORM_PROMPTS: Record<AgentId, string[]> = {
   'claude-code': [

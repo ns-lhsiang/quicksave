@@ -123,7 +123,7 @@ export class CommitSummaryService {
     const result = this.parseResponse(response);
 
     if (extra.attribution !== false) {
-      const aiTrailer = 'Commit-message-by: Quicksave AI <save@quicksave.dev>';
+      const aiTrailer = 'Commit-message-by: Quicksave AI';
       result.description = result.description
         ? `${result.description}\n\n${aiTrailer}`
         : aiTrailer;
