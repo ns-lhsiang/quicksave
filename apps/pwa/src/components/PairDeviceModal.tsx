@@ -35,10 +35,7 @@ export function PairDeviceModal({ onClose }: PairDeviceModalProps) {
 
   const inviteRef = useRef<PairInviteHandle | null>(null);
   const baseUrl = useMemo(
-    () =>
-      typeof window !== 'undefined'
-        ? `${window.location.protocol}//${window.location.host}`
-        : `${window.location.protocol}//${window.location.host}`,
+    () => `${window.location.protocol}//${window.location.host}`,
     [],
   );
 
