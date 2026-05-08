@@ -19,9 +19,7 @@ export function ToolCallGroupPlaceholder({ count, expanded, onToggle }: {
         aria-label={expanded ? `Hide ${count} tool ${noun}` : `Show ${count} hidden tool ${noun}`}
       >
         <ChevronIcon expanded={expanded} size="w-3 h-3" strokeWidth={2.5} />
-        {expanded
-          ? `${count} tool ${noun} — click to hide`
-          : `${count} tool ${noun} hidden — click to show`}
+        {count} tool {noun}
       </button>
     </div>
   );
