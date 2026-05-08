@@ -4,7 +4,7 @@ Static landing page deployed to GitHub Pages on every push to `main` that
 touches `site/**` (see `.github/workflows/pages.yml`).
 
 The PWA itself lives at [`apps/pwa`](../apps/pwa) and is hosted at
-[quicksave.dev](https://quicksave.dev). This is a separate, marketing-only
+[localhost](http://localhost:5173). This is a separate, marketing-only
 page and intentionally has no build step.
 
 ## Local preview

@@ -208,12 +208,12 @@ interface PairedDevice {
 
 **Agent QR** (existing, unchanged in content):
 ```
-https://quicksave.dev/connect?id={agentId}&pk={agentPublicKey}
+http://localhost:5173/connect?id={agentId}&pk={agentPublicKey}
 ```
 
 **PWA QR** (new, for device pairing):
 ```
-https://quicksave.dev/pair?pk={pwaPublicKey}
+http://localhost:5173/pair?pk={pwaPublicKey}
 ```
 
 The QR scanner needs to handle both URL formats and route accordingly.

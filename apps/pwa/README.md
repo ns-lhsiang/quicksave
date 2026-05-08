@@ -4,7 +4,7 @@ React PWA for controlling a remote [`@sumicom/quicksave`](../agent/README.md)
 agent from a phone or browser. Review diffs, stage / unstage files, commit,
 and drive Claude Code CLI sessions — all end-to-end encrypted.
 
-Hosted build lives at [quicksave.dev](https://quicksave.dev). This package
+Hosted build lives at [localhost](http://localhost:5173). This package
 is the source for that deployment.
 
 ## Stack
@@ -32,7 +32,7 @@ QUICKSAVE_SIGNALING_URL=ws://localhost:8080 pnpm dev:pwa
 ```
 
 For testing on a real phone over HTTPS, a cloudflared tunnel is pre-wired
-to `dev.quicksave.dev`:
+to `localhost:5173`:
 
 ```bash
 cloudflared tunnel run --url http://localhost:5173 quicksave-dev-tunnel

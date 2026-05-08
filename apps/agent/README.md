@@ -36,7 +36,7 @@ quicksave
 ```
 
 On first run this prints a pairing URL and QR code. Scan it from the
-[Quicksave PWA](https://quicksave.dev) to connect.
+[Quicksave PWA](http://localhost:5173) to connect.
 
 The CLI auto-launches a background daemon (`quicksave service run`) and
 then exits. The daemon keeps running; future `quicksave` invocations

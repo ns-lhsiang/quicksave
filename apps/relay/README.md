@@ -51,7 +51,7 @@ reverse proxy (nginx, Caddy, Cloudflare) for production.
 | `METRICS_HOST`        | `127.0.0.1`    | Bind address for the metrics admin server     |
 | `VAPID_PUBLIC_KEY`    | unset          | Enables push routes (must be set with private key) |
 | `VAPID_PRIVATE_KEY`   | unset          | VAPID private key for Web Push                |
-| `VAPID_SUBJECT`       | `mailto:admin@quicksave.dev` | VAPID subject (email or URL)    |
+| `VAPID_SUBJECT`       | `mailto:admin@localhost` | VAPID subject (email or URL)    |
 | `PUSH_STORE_PATH`     | in-memory only | Optional JSON snapshot path for push subscriptions |
 
 `METRICS_HOST` defaults to `127.0.0.1` so `/metrics` is **not** reachable from

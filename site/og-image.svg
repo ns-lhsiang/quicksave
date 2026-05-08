@@ -67,7 +67,7 @@
   <!-- Footer attribution, bottom-right -->
   <g transform="translate(1136, 590)" text-anchor="end">
     <text x="0" y="0" font-family="Ubuntu, Inter, sans-serif" font-size="20" fill="#94a3b8">
-      <tspan fill="#e2e8f0" font-weight="600">quicksave.dev</tspan>
+      <tspan fill="#e2e8f0" font-weight="600">localhost</tspan>
       <tspan dx="8">· by</tspan>
       <tspan dx="6" fill="#22c55e" font-weight="600">Sumicom</tspan>
     </text>

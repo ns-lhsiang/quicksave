@@ -1270,7 +1270,7 @@ This component shows:
 3. "Paired Devices" — list of paired devices with remove button
 4. "Rotate Identity" — danger button that posts tombstone and wipes local data
 
-Use `qrcode` library (or a React QR component) to show the PWA's public key as a QR code with URL format: `https://quicksave.dev/pair?pk={publicKey}`
+Use `qrcode` library (or a React QR component) to show the PWA's public key as a QR code with URL format: `http://localhost:5173/pair?pk={publicKey}`
 
 The "Scan to pair" flow:
 - Source device scans target's QR

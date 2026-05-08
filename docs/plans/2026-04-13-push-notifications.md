@@ -109,7 +109,7 @@ npx web-push generate-vapid-keys --json
 ```
 VAPID_PUBLIC_KEY=BNx...
 VAPID_PRIVATE_KEY=abc...
-VAPID_SUBJECT=mailto:admin@quicksave.dev
+VAPID_SUBJECT=mailto:admin@localhost
 PUSH_RELAY_URL=http://localhost:3001   # base URL the agent will POST to (see Task 10)
 PUSH_STORE_PATH=./data/push-store.json # on-disk snapshot path; gitignored
 ```
@@ -318,7 +318,7 @@ export class PushService {
   constructor(private store: PushStore) {
     const pub = process.env.VAPID_PUBLIC_KEY;
     const priv = process.env.VAPID_PRIVATE_KEY;
-    const sub = process.env.VAPID_SUBJECT || 'mailto:admin@quicksave.dev';
+    const sub = process.env.VAPID_SUBJECT || 'mailto:admin@localhost';
     if (pub && priv) {
       webpush.setVapidDetails(sub, pub, priv);
       console.log('[push] VAPID configured');

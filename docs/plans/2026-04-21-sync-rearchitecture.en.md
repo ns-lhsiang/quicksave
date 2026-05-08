@@ -46,7 +46,7 @@ Goal: the PWA can demo the full pairing flow **without any real relay involvemen
 ### A3. Pairing UI / routing / state machine
 
 - [x] Deep-link route `/pair` (added to all three `<Routes>`, uses HashRouter `useSearchParams` to parse `k=`)
-- [x] PWA manifest `url_handlers` declaration (`pwa.quicksave.dev`, `quicksave.dev`)
+- [x] PWA manifest `url_handlers` declaration (`localhost:5173`, `localhost`)
 - [x] `PairDeviceModal.tsx` (A side): QR display (`qrcode` produces a data URL) + copyable URL + SAS input + TTL countdown + candidate count
 - [x] `JoinGroupPage.tsx` (B side): route-level page, parses `k` from search params, large SAS display + 60s countdown + success/error states
 - [x] Error UX: 0 match "no matching device", 2+ match "suspicious collision detected" (red abort), loading / error messages

@@ -168,7 +168,7 @@ A 在「加入新裝置」UI 同時提供兩種形式，使用者依手邊裝置
 
 ```
 URL 格式（deep link）：
-  https://pwa.quicksave.dev/pair#k=<base64url(eA_pub)>
+  http://localhost:5173/pair#k=<base64url(eA_pub)>
 
 QR 格式：
   QR code 編碼上述同一個 URL 字串（B 掃 QR 等同打開 URL）
@@ -241,7 +241,7 @@ B = joiner  (fresh)
 
 【Phase 1. A 開 ephemeral mailbox】
   1. A UI「加入新裝置」→ 產生 ephemeral (eA_pub, eA_sec)
-  2. A 組 pair_url = https://pwa.quicksave.dev/pair#k=<base64url(eA_pub)>
+  2. A 組 pair_url = http://localhost:5173/pair#k=<base64url(eA_pub)>
      A 同時顯示 QR(pair_url) 與可複製的 pair_url 文字
      A 訂閱 pubsub topic hash(eA_pub)
   3. Relay 預設 mailbox TTL = 5 分鐘，到期自毀
@@ -503,7 +503,7 @@ Relay 仍**完全無狀態**（in-memory map、可隨時重啟）。重啟代價
 2. ~~Relay tombstone pubsub 可靠性~~：已採雙通道——pubsub push 做即時性、catch-up GET（每 180s + 每次 `'connected'`）做可靠性保底，兩端都收斂到同一個 idempotent sink。
 3. **Agent 自動 re-pair**：group reset 後每台 agent 都要手動 CLI `quicksave pair`，規模大時很煩。能否讓 agent 在自毀後印出 invite URL 到 stdout / log，讓 PWA 端掃一下就完成？第一版保守走純手動。
 4. **SAS 位數可調**：預設 6 碼 / 30 bits 已涵蓋正常威脅模型（見 [SAS 編碼與位數](#sas-編碼與位數)）。若未來出現「攻擊者能看螢幕但拿不到資料」的特殊場景（投影配對、公共看板等），可把 `sasEncode` 的 length 參數做成設定值，不改 protocol。
-5. **Pair URL handling in PWA installs**：deep link `https://pwa.quicksave.dev/pair#k=...` 在已安裝 PWA 的裝置上能否直接喚起 PWA？要看瀏覽器對 `url_handlers` 的支援程度（Chrome 有、Safari 較弱）。退路：未安裝 PWA 時瀏覽器直接打開網頁版 pair flow。
+5. **Pair URL handling in PWA installs**：deep link `http://localhost:5173/pair#k=...` 在已安裝 PWA 的裝置上能否直接喚起 PWA？要看瀏覽器對 `url_handlers` 的支援程度（Chrome 有、Safari 較弱）。退路：未安裝 PWA 時瀏覽器直接打開網頁版 pair flow。
 
 ## Maintenance
 

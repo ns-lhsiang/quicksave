@@ -13,7 +13,7 @@ relay in the middle that can't read your code.
 └────────────┘                 └───────────┘                 └──────────────┘
 ```
 
-- **PWA** — React app (`apps/pwa`), hosted at [quicksave.dev](https://quicksave.dev) or self-hostable.
+- **PWA** — React app (`apps/pwa`), hosted at [localhost](http://localhost:5173) or self-hostable.
 - **Agent** — Node.js daemon (`apps/agent`), installed globally via `npm install -g @sumicom/quicksave`. Manages coding-agent sessions, runs git, holds the NaCl keys.
 - **Relay** — Minimal Node server (`apps/relay`). Routes encrypted frames, serves an encrypted sync mailbox, fans out Web Push. Holds no keys, no plaintext, no user identifiers.
 
@@ -52,7 +52,7 @@ a background daemon running.
 
 ### 3. Connect the PWA
 
-Open [quicksave.dev](https://quicksave.dev) on your phone and scan the
+Open [localhost](http://localhost:5173) on your phone and scan the
 QR code. Everything from this point on is end-to-end encrypted.
 
 ## Monorepo layout

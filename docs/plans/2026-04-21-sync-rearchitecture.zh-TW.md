@@ -46,7 +46,7 @@
 ### A3. Pairing UI / 路由 / state machine
 
 - [x] Deep-link 路由 `/pair`（三處 `<Routes>` 都加，走 HashRouter `useSearchParams` 解 `k=`）
-- [x] PWA manifest `url_handlers` 宣告（`pwa.quicksave.dev`、`quicksave.dev`）
+- [x] PWA manifest `url_handlers` 宣告（`localhost:5173`、`localhost`）
 - [x] `PairDeviceModal.tsx`（A 側）：QR 顯示（`qrcode` 產 data URL）+ 可複製 URL + SAS 輸入框 + TTL 倒數 + 候選計數
 - [x] `JoinGroupPage.tsx`（B 側）：route-level 頁面、從 search params 解 `k`、大字 SAS 顯示 + 60s 倒數 + 成功/錯誤狀態
 - [x] Error UX：0 match「沒有對上的裝置」、2+ match「偵測到可疑碰撞」（紅色 abort）、loading / 錯誤訊息

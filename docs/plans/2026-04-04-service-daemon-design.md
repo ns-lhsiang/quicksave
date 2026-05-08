@@ -337,7 +337,7 @@ After the ack, the daemon pushes event notifications (see Event Notifications be
 ```
 → { "method": "get-pairing-info", "params": {} }
 ← { "result": {
-     "pairingUrl": "https://quicksave.dev/pair#...",
+     "pairingUrl": "http://localhost:5173/pair#...",
      "agentId": "agent-abc123",
      "connectionState": "connected", "peerCount": 2
    } }

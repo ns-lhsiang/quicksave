@@ -168,7 +168,7 @@ A's "add new device" UI offers both forms simultaneously; the user picks whichev
 
 ```
 URL form (deep link):
-  https://pwa.quicksave.dev/pair#k=<base64url(eA_pub)>
+  http://localhost:5173/pair#k=<base64url(eA_pub)>
 
 QR form:
   the QR code encodes the same URL string above (B scanning the QR is equivalent to opening the URL)
@@ -241,7 +241,7 @@ B = joiner  (fresh)
 
 [Phase 1. A opens an ephemeral mailbox]
   1. A UI "add new device" → generate ephemeral (eA_pub, eA_sec)
-  2. A composes pair_url = https://pwa.quicksave.dev/pair#k=<base64url(eA_pub)>
+  2. A composes pair_url = http://localhost:5173/pair#k=<base64url(eA_pub)>
      A simultaneously displays QR(pair_url) and the copyable pair_url text
      A opens an SSE stream on /pair-requests/hash(eA_pub)/subscribe
   3. Relay defaults mailbox TTL = 5 minutes; auto-destructs at expiry
@@ -507,7 +507,7 @@ There are two core differences:
 2. ~~Relay tombstone pubsub reliability~~: now uses two channels — pubsub push for immediacy and catch-up GET (every 180s + on every `'connected'`) as the reliability backstop, both converging to the same idempotent sink.
 3. **Automatic agent re-pair**: after a group reset every agent has to manually run `quicksave pair` from the CLI, which is annoying at scale. Could the agent print an invite URL to stdout / log after self-destructing so the PWA can scan and finish? The first version conservatively sticks with pure manual operation.
 4. **Configurable SAS length**: the default 6 chars / 30 bits already covers the normal threat model (see [SAS encoding and length](#sas-encoding-and-length)). If a special scenario emerges where "the attacker can see the screen but cannot take data" (projector pairing, public displays, etc.), the `sasEncode` length parameter can be made configurable without changing the protocol.
-5. **Pair URL handling in PWA installs**: can the deep link `https://pwa.quicksave.dev/pair#k=...` directly invoke the PWA on a device with the PWA installed? Depends on the browser's support for `url_handlers` (Chrome has it; Safari is weaker). Fallback: if the PWA is not installed, the browser opens the web version of the pair flow directly.
+5. **Pair URL handling in PWA installs**: can the deep link `http://localhost:5173/pair#k=...` directly invoke the PWA on a device with the PWA installed? Depends on the browser's support for `url_handlers` (Chrome has it; Safari is weaker). Fallback: if the PWA is not installed, the browser opens the web version of the pair flow directly.
 
 ## Maintenance
 

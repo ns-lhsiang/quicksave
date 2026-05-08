@@ -75,7 +75,7 @@ mobile-device testing:
 cloudflared tunnel run --url http://localhost:5173 quicksave-dev-tunnel
 ```
 
-Routes `dev.quicksave.dev` to local `localhost:5173`.
+Routes `localhost:5173` to local `localhost:5173`.
 
 For an ad-hoc tunnel without a pre-configured Cloudflare hostname, the
 PWA package exposes an ngrok-based shortcut that boots Vite and an ngrok
