@@ -47,7 +47,7 @@ if [ "$needs_full_check" = true ]; then
   cd "$WORKTREE_DIR"
 
   echo "→ pnpm install"
-  pnpm install --frozen-lockfile
+  pnpm install --frozen-lockfile --config.confirmModulesPurge=false
 
   echo "→ pnpm build"
   pnpm build
