@@ -83,16 +83,12 @@ interface ConnectionStore {
   isAgentConnected: (agentId: string) => boolean;
 }
 
-// In dev mode, use the same host as the page (signaling is embedded in Vite dev server)
 const getDefaultSignalingServer = () => {
   if (import.meta.env.QUICKSAVE_SIGNALING_URL) {
     return import.meta.env.QUICKSAVE_SIGNALING_URL;
   }
-  if (import.meta.env.DEV) {
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    return `${protocol}//${window.location.host}`;
-  }
-  return 'ws://localhost:8080';
+  const hostname = window.location.hostname || 'localhost';
+  return `ws://${hostname}:8080`;
 };
 
 const DEFAULT_SIGNALING_SERVER = getDefaultSignalingServer();

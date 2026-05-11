@@ -164,6 +164,7 @@ export function TerminalView({ terminalId, getBus, onExit }: TerminalViewProps) 
       ta.setAttribute('autocorrect', 'off');
       ta.setAttribute('autocomplete', 'off');
       ta.setAttribute('spellcheck', 'false');
+      ta.setAttribute('inputmode', 'none');
     }
 
     // Debounce resize cmds. ResizeObserver and the fit RAF can fire many
@@ -353,6 +354,7 @@ export function TerminalView({ terminalId, getBus, onExit }: TerminalViewProps) 
         pasteError={pasteError}
         connected={connected}
         exited={exitCode !== undefined}
+        termRef={termRef}
       />
     </div>
   );
@@ -369,14 +371,31 @@ function VirtualKeys({
   pasteError,
   connected,
   exited,
+  termRef,
 }: {
   onKey: (seq: string) => void;
   onPaste: () => void;
   pasteError: string | null;
   connected: boolean;
   exited: boolean;
+  termRef: React.RefObject<import('@xterm/xterm').Terminal | null>;
 }) {
   const [ctrlMode, setCtrlMode] = useState(false);
+  const [kbVisible, setKbVisible] = useState(false);
+
+  const toggleKeyboard = () => {
+    const ta = termRef.current?.textarea;
+    if (!ta) return;
+    if (kbVisible) {
+      ta.setAttribute('inputmode', 'none');
+      ta.blur();
+      setKbVisible(false);
+    } else {
+      ta.removeAttribute('inputmode');
+      ta.focus();
+      setKbVisible(true);
+    }
+  };
 
   const send = (seq: string) => {
     if (!connected || exited) return;
@@ -414,6 +433,7 @@ function VirtualKeys({
         ))
       ) : (
         <>
+          <KeyBtn className="text-green-300 border-green-500/60" onClick={() => send('\r')} disabled={!connected || exited}>Enter</KeyBtn>
           <KeyBtn onClick={() => send('\t')} disabled={!connected || exited}>Tab</KeyBtn>
           <KeyBtn onClick={() => send('\x1b')} disabled={!connected || exited}>Esc</KeyBtn>
           <KeyBtn onClick={() => send('\x1b[A')} disabled={!connected || exited}>↑</KeyBtn>
@@ -429,6 +449,13 @@ function VirtualKeys({
             disabled={!connected || exited}
           >
             📋 Paste
+          </KeyBtn>
+          <KeyBtn
+            className={kbVisible ? 'text-yellow-300 border-yellow-500/60' : 'text-slate-400 border-slate-600'}
+            onClick={toggleKeyboard}
+            disabled={!connected || exited}
+          >
+            {kbVisible ? '⌨ Hide' : '⌨ Type'}
           </KeyBtn>
         </>
       )}
