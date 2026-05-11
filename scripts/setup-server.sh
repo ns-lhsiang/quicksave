@@ -11,9 +11,9 @@
 #
 set -e
 
-# Configuration - update these
-DOMAIN="localhost"
-GITHUB_REPO="ns-lhsiang/quicksave"
+# Configuration - override via environment or edit here
+DOMAIN="${DOMAIN:-localhost}"
+GITHUB_REPO="${GITHUB_REPO:-ns-lhsiang/quicksave}"
 
 # Derived domains
 STAGING_DOMAIN="staging.${DOMAIN}"

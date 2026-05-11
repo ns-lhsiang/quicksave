@@ -40,7 +40,7 @@ export interface AgentConfig {
   managedCodingPaths?: string[];
 }
 
-const DEFAULT_SIGNALING_SERVER = 'ws://localhost:8080';
+const DEFAULT_SIGNALING_SERVER = process.env.QUICKSAVE_SIGNALING_URL || 'ws://localhost:8080';
 
 export function ensureConfigDir(): void {
   const dir = getQuicksaveDir();

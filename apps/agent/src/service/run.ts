@@ -107,7 +107,8 @@ export async function runDaemon(): Promise<void> {
   }
 
   // 3. Load config and managed repos
-  const config = getOrCreateConfig('ws://localhost:8080');
+  const signalingUrl = process.env.QUICKSAVE_SIGNALING_URL || 'ws://localhost:8080';
+  const config = getOrCreateConfig(signalingUrl);
 
   const repoPaths = getManagedRepos();
   const codingPaths = getManagedCodingPaths();
@@ -664,7 +665,8 @@ function registerDaemonMethods(
   ipcServer.registerMethod('get-pairing-info', (): PairingInfoResult => {
     const current = loadConfig() ?? config;
     const signPk = current.signKeyPair.publicKey;
-    const pairingUrl = `http://localhost:5173/#/connect/${current.agentId}?pk=${encodeURIComponent(current.keyPair.publicKey)}&spk=${encodeURIComponent(signPk)}&name=${encodeURIComponent(hostname())}`;
+    const pwaBase = process.env.QUICKSAVE_PWA_URL || 'http://localhost:5173';
+    const pairingUrl = `${pwaBase}/#/connect/${current.agentId}?pk=${encodeURIComponent(current.keyPair.publicKey)}&spk=${encodeURIComponent(signPk)}&name=${encodeURIComponent(hostname())}`;
     return {
       agentId: current.agentId,
       publicKey: current.keyPair.publicKey,

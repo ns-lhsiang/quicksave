@@ -59,7 +59,7 @@ export default defineConfig({
           },
         ],
         url_handlers: [
-          { origin: 'http://localhost:5173' },
+          { origin: process.env.QUICKSAVE_PWA_URL || 'http://localhost:5173' },
         ],
       },
     }),
