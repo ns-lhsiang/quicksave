@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MIT
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { tmpdir } from 'os';
+import { realpathSync } from 'fs';
 import { basename } from 'path';
 import type {
   TerminalSummary,
@@ -16,6 +17,19 @@ import {
 
 const SHELL = '/bin/sh';
 const TEST_TIMEOUT = 10_000;
+const REAL_TMPDIR = realpathSync(tmpdir());
+
+// node-pty's posix_spawnp can fail in sandboxed/temp worktree environments
+// (e.g. pre-push hook clean worktree). Detect early and skip PTY-dependent tests.
+let ptyAvailable = true;
+try {
+  const pty = await import('node-pty');
+  const probe = pty.spawn(SHELL, ['-c', 'true'], { cols: 10, rows: 10, cwd: REAL_TMPDIR });
+  probe.kill();
+} catch {
+  ptyAvailable = false;
+}
+const itPty = ptyAvailable ? it : it.skip;
 
 /**
  * Wait until the manager has emitted an output chunk whose `chunk` matches the
@@ -70,7 +84,7 @@ describe('TerminalManager', () => {
     _resetTerminalManagerForTest();
   });
 
-  it(
+  itPty(
     'create() returns a summary with requested cwd/cols/rows and defaults title to basename(shell)',
     async () => {
       const summary = await mgr.create({
@@ -94,7 +108,7 @@ describe('TerminalManager', () => {
     TEST_TIMEOUT,
   );
 
-  it(
+  itPty(
     'listSummaries() includes created terminal and emits terminals-updated upsert',
     async () => {
       const events: TerminalsUpdate[] = [];
@@ -116,7 +130,7 @@ describe('TerminalManager', () => {
     TEST_TIMEOUT,
   );
 
-  it(
+  itPty(
     'write() delivers input and surfaces output via event + snapshot; seq is monotonically increasing',
     async () => {
       const summary = await mgr.create({
@@ -159,7 +173,7 @@ describe('TerminalManager', () => {
     TEST_TIMEOUT,
   );
 
-  it(
+  itPty(
     'resize() updates cols/rows on the summary and emits terminal-updated',
     async () => {
       const summary = await mgr.create({
@@ -195,7 +209,7 @@ describe('TerminalManager', () => {
     TEST_TIMEOUT,
   );
 
-  it(
+  itPty(
     'rename() trims whitespace, falls back to basename on empty, and caps at 80 chars',
     async () => {
       const summary = await mgr.create({ cwd: tmpdir(), shell: SHELL });
@@ -217,7 +231,7 @@ describe('TerminalManager', () => {
     TEST_TIMEOUT,
   );
 
-  it(
+  itPty(
     'rename() emits terminal-updated with the new title',
     async () => {
       const summary = await mgr.create({ cwd: tmpdir(), shell: SHELL });
@@ -240,7 +254,7 @@ describe('TerminalManager', () => {
     TEST_TIMEOUT,
   );
 
-  it(
+  itPty(
     'close() removes the terminal and emits terminals-updated { kind: "remove" }',
     async () => {
       const summary = await mgr.create({ cwd: tmpdir(), shell: SHELL });
@@ -271,7 +285,7 @@ describe('TerminalManager', () => {
     TEST_TIMEOUT,
   );
 
-  it(
+  itPty(
     'write() throws for unknown terminals and for terminals that have been closed',
     async () => {
       // Unknown id.
@@ -286,7 +300,7 @@ describe('TerminalManager', () => {
     TEST_TIMEOUT,
   );
 
-  it(
+  itPty(
     'shell exiting naturally emits an output chunk with exited: true and updates the summary',
     async () => {
       const summary = await mgr.create({ cwd: tmpdir(), shell: SHELL });

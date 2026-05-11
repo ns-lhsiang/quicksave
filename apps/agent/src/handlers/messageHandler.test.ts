@@ -4,6 +4,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { MessageHandler } from './messageHandler.js';
 import { createMessage } from '@sumicom/quicksave-shared';
 import { mkdir, writeFile, rm, readFile } from 'fs/promises';
+import { realpathSync } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
 import { simpleGit } from 'simple-git';
@@ -34,14 +35,16 @@ describe('MessageHandler', () => {
 
   beforeEach(async () => {
     // Redirect all quicksave paths to a temp dir so tests don't pollute ~/.quicksave
-    testQuicksaveDir = join(tmpdir(), `qs-test-home-${Date.now()}-${Math.random().toString(36).slice(2)}`);
-    await mkdir(testQuicksaveDir, { recursive: true });
+    const rawQsDir = join(tmpdir(), `qs-test-home-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+    await mkdir(rawQsDir, { recursive: true });
+    testQuicksaveDir = realpathSync(rawQsDir);
     setQuicksaveDir(testQuicksaveDir);
     resetSessionRegistry();
 
-    // Create temporary test repo
-    testRepoPath = join(tmpdir(), `quicksave-handler-test-${Date.now()}-${Math.random().toString(36).slice(2)}`);
-    await mkdir(testRepoPath, { recursive: true });
+    // Create temporary test repo (resolve symlinks so paths match git rev-parse output)
+    const rawRepoPath = join(tmpdir(), `quicksave-handler-test-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+    await mkdir(rawRepoPath, { recursive: true });
+    testRepoPath = realpathSync(rawRepoPath);
 
     // Initialize git repo
     const git = simpleGit(testRepoPath);
@@ -579,8 +582,9 @@ describe('MessageHandler', () => {
 
     beforeEach(async () => {
       // Create a bare repo to clone from (no network needed)
-      bareRepoPath = join(tmpdir(), `qs-bare-${Date.now()}-${Math.random().toString(36).slice(2)}`);
-      await mkdir(bareRepoPath, { recursive: true });
+      const rawBarePath = join(tmpdir(), `qs-bare-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+      await mkdir(rawBarePath, { recursive: true });
+      bareRepoPath = realpathSync(rawBarePath);
       const bareGit = simpleGit(bareRepoPath);
       await bareGit.init();
       await bareGit.addConfig('user.email', 'test@test.com');
@@ -589,8 +593,9 @@ describe('MessageHandler', () => {
       await bareGit.add('README.md');
       await bareGit.commit('Initial commit');
 
-      cloneTargetBase = join(tmpdir(), `qs-clone-target-${Date.now()}-${Math.random().toString(36).slice(2)}`);
-      await mkdir(cloneTargetBase, { recursive: true });
+      const rawTargetBase = join(tmpdir(), `qs-clone-target-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+      await mkdir(rawTargetBase, { recursive: true });
+      cloneTargetBase = realpathSync(rawTargetBase);
     });
 
     afterEach(async () => {

@@ -3,6 +3,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { GitOperations } from './operations.js';
 import { mkdir, writeFile, rm, unlink, readFile } from 'fs/promises';
+import { realpathSync } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
 import { simpleGit, SimpleGit } from 'simple-git';
@@ -14,8 +15,10 @@ import { simpleGit, SimpleGit } from 'simple-git';
 
 /** Helper: create a fresh git repo with an initial commit */
 async function createTestRepo(): Promise<{ repoPath: string; git: SimpleGit; defaultBranch: string }> {
-  const repoPath = join(tmpdir(), `qs-edge-${Date.now()}-${Math.random().toString(36).slice(2)}`);
-  await mkdir(repoPath, { recursive: true });
+  const rawPath = join(tmpdir(), `qs-edge-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+  await mkdir(rawPath, { recursive: true });
+  // Resolve symlinks (macOS /var -> /private/var) so paths match git rev-parse output
+  const repoPath = realpathSync(rawPath);
   const git = simpleGit(repoPath);
   await git.init();
   await git.addConfig('user.email', 'test@test.com');
