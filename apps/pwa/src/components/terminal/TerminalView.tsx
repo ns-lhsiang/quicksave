@@ -32,14 +32,11 @@ interface TerminalViewProps {
  */
 const STANDARD_COLS = 80;
 /**
- * Cap rows at 24 (classic VT100) for consistent rendering of TUI tools
- * (vim, top, less, fzf) — they paint to whatever rows the PTY reports
- * and look very different at 50+ rows. On tall screens we leave vertical
- * margin below the terminal rather than show a stretched 50-row view.
- * On short screens (mobile portrait + on-screen keyboard) the natural
- * fit is already < 24, so the cap is a no-op there.
+ * On desktop, cap rows at 24 (classic VT100) so TUI tools render
+ * consistently. On mobile (narrow screens), use all available rows
+ * so the terminal fills the space above the virtual key bar.
  */
-const STANDARD_ROWS = 24;
+const STANDARD_ROWS_DESKTOP = 24;
 const MIN_FONT_SIZE = 6;
 /**
  * Cap the auto-scaled font so that on a wide desktop window the terminal
@@ -70,13 +67,14 @@ function fitToStandardCols(term: Terminal, fit: FitAddon): void {
   // Final fit + cap dims:
   //   cols: always exactly 80 (clamp wide screens; small screens already
   //         scaled font down to fit).
-  //   rows: cap at STANDARD_ROWS so tall windows don't blow past 24 rows;
-  //         small screens keep their natural smaller fit.
+  //   rows: on desktop (wide), cap at 24 so TUIs render consistently;
+  //         on mobile (narrow), use all available rows to fill the screen.
   try {
     fit.fit();
   } catch { /* container not ready */ }
+  const isMobile = window.innerWidth < 768;
   const targetCols = STANDARD_COLS;
-  const targetRows = Math.min(term.rows, STANDARD_ROWS);
+  const targetRows = isMobile ? term.rows : Math.min(term.rows, STANDARD_ROWS_DESKTOP);
   if (term.cols !== targetCols || term.rows !== targetRows) {
     term.resize(targetCols, targetRows);
   }
@@ -137,7 +135,7 @@ export function TerminalView({ terminalId, getBus, onExit }: TerminalViewProps) 
         cursor: '#94a3b8',
         selectionBackground: '#334155',
       },
-      scrollback: 5000,
+      scrollback: 50000,
       allowProposedApi: true,
       convertEol: false,
     });
@@ -204,9 +202,63 @@ export function TerminalView({ terminalId, getBus, onExit }: TerminalViewProps) 
     });
     ro.observe(container);
 
+    // Touch-scroll via pointer events (xterm.js intercepts touch events).
+    // In normal mode, scroll xterm's scrollback buffer.
+    // In alternate screen mode (tmux/vim), send mouse wheel escape sequences.
+    let pointerStartY = 0;
+    let pointerId: number | null = null;
+    let pointerScrolling = false;
+    const isAltScreen = () => (term.buffer.active.type === 'alternate');
+    const onPointerDown = (e: PointerEvent) => {
+      if (e.pointerType !== 'touch') return;
+      pointerStartY = e.clientY;
+      pointerId = e.pointerId;
+      pointerScrolling = false;
+      container.setPointerCapture(e.pointerId);
+    };
+    const onPointerMove = (e: PointerEvent) => {
+      if (e.pointerId !== pointerId) return;
+      const dy = pointerStartY - e.clientY;
+      const threshold = 8;
+      if (!pointerScrolling && Math.abs(dy) > threshold) {
+        pointerScrolling = true;
+      }
+      if (pointerScrolling) {
+        const lineHeight = term.options.fontSize ?? 13;
+        const lines = Math.round(dy / lineHeight);
+        if (lines !== 0) {
+          if (isAltScreen()) {
+            const button = lines > 0 ? 65 : 64;
+            const count = Math.abs(lines);
+            for (let i = 0; i < count; i++) {
+              sendInput(terminalId, `\x1b[<${button};1;1M`).catch(() => {});
+            }
+          } else {
+            term.scrollLines(lines);
+          }
+          pointerStartY = e.clientY;
+        }
+        e.preventDefault();
+      }
+    };
+    const onPointerUp = (e: PointerEvent) => {
+      if (e.pointerId === pointerId) {
+        pointerId = null;
+        pointerScrolling = false;
+      }
+    };
+    container.addEventListener('pointerdown', onPointerDown);
+    container.addEventListener('pointermove', onPointerMove);
+    container.addEventListener('pointerup', onPointerUp);
+    container.addEventListener('pointercancel', onPointerUp);
+
     return () => {
       onData.dispose();
       ro.disconnect();
+      container.removeEventListener('pointerdown', onPointerDown);
+      container.removeEventListener('pointermove', onPointerMove);
+      container.removeEventListener('pointerup', onPointerUp);
+      container.removeEventListener('pointercancel', onPointerUp);
       if (resizeTimer) clearTimeout(resizeTimer);
       term.dispose();
       container.replaceChildren();
@@ -381,6 +433,7 @@ function VirtualKeys({
   termRef: React.RefObject<import('@xterm/xterm').Terminal | null>;
 }) {
   const [ctrlMode, setCtrlMode] = useState(false);
+  const [showHelp, setShowHelp] = useState(false);
   const [kbVisible, setKbVisible] = useState(false);
 
   const toggleKeyboard = () => {
@@ -420,17 +473,38 @@ function VirtualKeys({
       <div className="flex flex-wrap gap-2 px-3 py-2">
       <KeyBtn
         className={ctrlMode ? 'ring-1 ring-blue-400' : ''}
-        onClick={() => setCtrlMode((v) => !v)}
+        onClick={() => { setCtrlMode((v) => !v); setShowHelp(false); }}
         disabled={!connected || exited}
       >
         Ctrl
       </KeyBtn>
       {ctrlMode ? (
-        ['A', 'C', 'D', 'L', 'R', 'U', 'W', 'Z'].map((l) => (
-          <KeyBtn key={l} onClick={() => ctrlChord(l)} disabled={!connected || exited}>
-            ^{l}
-          </KeyBtn>
-        ))
+        showHelp ? (
+          <div className="text-[11px] text-slate-300 leading-relaxed px-1 w-full">
+            <div className="flex justify-between items-start">
+              <div className="grid grid-cols-2 gap-x-4 gap-y-0.5">
+                <span><b>^A</b> Home</span><span><b>^E</b> End</span>
+                <span><b>^U</b> Del line</span><span><b>^K</b> Del to end</span>
+                <span><b>^W</b> Del word</span><span><b>^C</b> Interrupt</span>
+                <span><b>^D</b> EOF/Exit</span><span><b>^Z</b> Suspend</span>
+                <span><b>^L</b> Clear</span><span><b>^R</b> History</span>
+                <span><b>^O</b> Accept</span><span><b>^Y</b> Yank/Paste</span>
+              </div>
+              <button onClick={() => setShowHelp(false)} className="text-slate-400 px-2 py-1">x</button>
+            </div>
+          </div>
+        ) : (
+          <>
+            {['A', 'C', 'D', 'E', 'K', 'L', 'O', 'R', 'U', 'W', 'Y', 'Z'].map((l) => (
+              <KeyBtn key={l} onClick={() => ctrlChord(l)} disabled={!connected || exited}>
+                ^{l}
+              </KeyBtn>
+            ))}
+            <KeyBtn className="text-slate-400 border-slate-600" onClick={() => setShowHelp(true)} disabled={false}>
+              ?
+            </KeyBtn>
+          </>
+        )
       ) : (
         <>
           <KeyBtn className="text-green-300 border-green-500/60" onClick={() => send('\r')} disabled={!connected || exited}>Enter</KeyBtn>
@@ -440,6 +514,8 @@ function VirtualKeys({
           <KeyBtn onClick={() => send('\x1b[B')} disabled={!connected || exited}>↓</KeyBtn>
           <KeyBtn onClick={() => send('\x1b[D')} disabled={!connected || exited}>←</KeyBtn>
           <KeyBtn onClick={() => send('\x1b[C')} disabled={!connected || exited}>→</KeyBtn>
+          <KeyBtn onClick={() => send('\x1b[H')} disabled={!connected || exited}>Home</KeyBtn>
+          <KeyBtn onClick={() => send('\x1b[F')} disabled={!connected || exited}>End</KeyBtn>
           <KeyBtn onClick={() => send('|')} disabled={!connected || exited}>|</KeyBtn>
           <KeyBtn onClick={() => send('~')} disabled={!connected || exited}>~</KeyBtn>
           <KeyBtn onClick={() => send('/')} disabled={!connected || exited}>/</KeyBtn>

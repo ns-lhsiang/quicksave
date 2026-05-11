@@ -298,3 +298,27 @@ html, body {
 .plan-markdown li {
   @apply my-1;
 }
+
+/* xterm: enable pointer-based touch scroll */
+.xterm {
+  touch-action: none;
+}
+
+/* xterm: always show scrollbar */
+.xterm .xterm-viewport {
+  overflow-y: scroll !important;
+  scrollbar-width: thin;
+  scrollbar-color: #64748b transparent;
+}
+.xterm .xterm-viewport::-webkit-scrollbar {
+  width: 10px;
+  -webkit-appearance: none;
+}
+.xterm .xterm-viewport::-webkit-scrollbar-track {
+  background: rgba(15, 23, 42, 0.5);
+}
+.xterm .xterm-viewport::-webkit-scrollbar-thumb {
+  background: #64748b;
+  border-radius: 5px;
+  min-height: 40px;
+}
