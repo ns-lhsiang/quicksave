@@ -37,13 +37,17 @@ export function ConnectionSetup({ onConnect }: Props) {
   const isConnecting = state === 'connecting';
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-6 safe-area-top safe-area-bottom">
-      <div className="w-full max-w-md">
-        {/* Logo */}
-        <div className="text-center mb-8 relative">
+    <div className="h-full overflow-y-auto flex flex-col items-center p-4 safe-area-top safe-area-bottom">
+      <div className="w-full max-w-md my-auto">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h1 className="text-xl font-bold text-white">Quicksave</h1>
+            <p className="text-xs text-slate-400">Remote git control with E2E encryption</p>
+          </div>
           <button
             onClick={() => navigate('/settings')}
-            className="absolute right-0 top-0 p-2 text-slate-400 hover:text-white transition-colors"
+            className="p-2 text-slate-400 hover:text-white transition-colors"
             aria-label="Settings"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -51,16 +55,14 @@ export function ConnectionSetup({ onConnect }: Props) {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
             </svg>
           </button>
-          <h1 className="text-3xl font-bold text-white mb-2">Quicksave</h1>
-          <p className="text-slate-400">Remote git control with E2E encryption</p>
         </div>
 
         {/* Connection Form */}
-        <div className="bg-slate-800 rounded-lg p-6">
-          <h2 className="text-lg font-semibold mb-4"><FormattedMessage id="connectionSetup.title" /></h2>
+        <div className="bg-slate-800 rounded-lg p-4">
+          <h2 className="text-base font-semibold mb-3"><FormattedMessage id="connectionSetup.title" /></h2>
 
           {/* Mode Toggle */}
-          <div className="flex mb-6 bg-slate-700 rounded-lg p-1">
+          <div className="flex mb-4 bg-slate-700 rounded-lg p-1">
             <button
               type="button"
               className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
@@ -160,8 +162,8 @@ export function ConnectionSetup({ onConnect }: Props) {
         </div>
 
         {/* Help Text */}
-        <div className="mt-6 text-center">
-          <p className="text-sm text-slate-500">
+        <div className="mt-4 text-center">
+          <p className="text-xs text-slate-500">
             Run <code className="text-slate-400">quicksave</code> on your computer to get connection details.
           </p>
         </div>

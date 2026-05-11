@@ -39,7 +39,9 @@ export class SignalingClient extends EventEmitter {
   connect(): Promise<void> {
     return new Promise((resolve, reject) => {
       try {
-        this.ws = new WebSocket(this.url);
+        this.ws = new WebSocket(this.url, {
+          rejectUnauthorized: false,
+        });
 
         this.ws.on('open', () => {
           this.isConnected = true;

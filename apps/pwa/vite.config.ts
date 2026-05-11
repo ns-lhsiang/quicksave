@@ -3,6 +3,7 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
+import basicSsl from '@vitejs/plugin-basic-ssl';
 import { signalingServerPlugin } from './vite-plugin-relay';
 
 export default defineConfig({
@@ -13,6 +14,7 @@ export default defineConfig({
     allowedHosts: ['.ngrok-free.app', '.ngrok.io', 'localhost'],
   },
   plugins: [
+    basicSsl(),
     signalingServerPlugin(),
     react(),
     VitePWA({

@@ -87,8 +87,10 @@ const getDefaultSignalingServer = () => {
   if (import.meta.env.QUICKSAVE_SIGNALING_URL) {
     return import.meta.env.QUICKSAVE_SIGNALING_URL;
   }
+  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
   const hostname = window.location.hostname || 'localhost';
-  return `ws://${hostname}:8080`;
+  const port = window.location.port || (protocol === 'wss:' ? '443' : '80');
+  return `${protocol}//${hostname}:${port}`;
 };
 
 const DEFAULT_SIGNALING_SERVER = getDefaultSignalingServer();

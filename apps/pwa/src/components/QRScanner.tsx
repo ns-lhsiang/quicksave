@@ -140,7 +140,7 @@ export function QRScanner({ onScan, onPairingScan, onError }: QRScannerProps) {
   return (
     <div className="text-center">
       {/* Scanner area */}
-      <div className="relative w-full max-w-[280px] mx-auto mb-4">
+      <div className="relative w-full max-w-[250px] mx-auto mb-3">
         {/* Placeholder shown when not scanning */}
         {showStartButton && (
           <div className="w-full aspect-square bg-slate-700 rounded-lg flex items-center justify-center">
