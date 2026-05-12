@@ -300,7 +300,9 @@ html, body {
 }
 
 /* xterm: enable pointer-based touch scroll */
-.xterm {
+.xterm,
+.xterm .xterm-viewport,
+.xterm .xterm-screen {
   touch-action: none;
 }
 

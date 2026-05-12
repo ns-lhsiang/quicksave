@@ -202,28 +202,38 @@ export function TerminalView({ terminalId, getBus, onExit }: TerminalViewProps) 
     });
     ro.observe(container);
 
-    // Touch-scroll via pointer events (xterm.js intercepts touch events).
-    // In normal mode, scroll xterm's scrollback buffer.
-    // In alternate screen mode (tmux/vim), send mouse wheel escape sequences.
-    let pointerStartY = 0;
-    let pointerId: number | null = null;
-    let pointerScrolling = false;
-    const isAltScreen = () => (term.buffer.active.type === 'alternate');
-    const onPointerDown = (e: PointerEvent) => {
-      if (e.pointerType !== 'touch') return;
-      pointerStartY = e.clientY;
-      pointerId = e.pointerId;
-      pointerScrolling = false;
-      container.setPointerCapture(e.pointerId);
+    // Touch-scroll via touch events directly (more reliable on iOS than
+    // pointer events + setPointerCapture which can silently fail).
+    let touchStartY = 0;
+    let touchScrolling = false;
+    let activeTouchId: number | null = null;
+    const isAltScreen = () =>
+      term.buffer.active.type === 'alternate' ||
+      term.buffer.active.baseY === 0;
+    const onTouchStart = (e: TouchEvent) => {
+      if (e.touches.length !== 1) return;
+      const touch = e.touches[0];
+      touchStartY = touch.clientY;
+      activeTouchId = touch.identifier;
+      touchScrolling = false;
     };
-    const onPointerMove = (e: PointerEvent) => {
-      if (e.pointerId !== pointerId) return;
-      const dy = pointerStartY - e.clientY;
-      const threshold = 8;
-      if (!pointerScrolling && Math.abs(dy) > threshold) {
-        pointerScrolling = true;
+    const onTouchMove = (e: TouchEvent) => {
+      if (activeTouchId === null) return;
+      let touch: Touch | undefined;
+      for (let i = 0; i < e.changedTouches.length; i++) {
+        if (e.changedTouches[i].identifier === activeTouchId) {
+          touch = e.changedTouches[i];
+          break;
+        }
       }
-      if (pointerScrolling) {
+      if (!touch) return;
+      const dy = touchStartY - touch.clientY;
+      const threshold = 8;
+      if (!touchScrolling && Math.abs(dy) > threshold) {
+        touchScrolling = true;
+      }
+      if (touchScrolling) {
+        e.preventDefault();
         const lineHeight = term.options.fontSize ?? 13;
         const lines = Math.round(dy / lineHeight);
         if (lines !== 0) {
@@ -236,29 +246,31 @@ export function TerminalView({ terminalId, getBus, onExit }: TerminalViewProps) 
           } else {
             term.scrollLines(lines);
           }
-          pointerStartY = e.clientY;
+          touchStartY = touch.clientY;
         }
-        e.preventDefault();
       }
     };
-    const onPointerUp = (e: PointerEvent) => {
-      if (e.pointerId === pointerId) {
-        pointerId = null;
-        pointerScrolling = false;
+    const onTouchEnd = (e: TouchEvent) => {
+      for (let i = 0; i < e.changedTouches.length; i++) {
+        if (e.changedTouches[i].identifier === activeTouchId) {
+          activeTouchId = null;
+          touchScrolling = false;
+          break;
+        }
       }
     };
-    container.addEventListener('pointerdown', onPointerDown);
-    container.addEventListener('pointermove', onPointerMove);
-    container.addEventListener('pointerup', onPointerUp);
-    container.addEventListener('pointercancel', onPointerUp);
+    container.addEventListener('touchstart', onTouchStart, { passive: true });
+    container.addEventListener('touchmove', onTouchMove, { passive: false });
+    container.addEventListener('touchend', onTouchEnd);
+    container.addEventListener('touchcancel', onTouchEnd);
 
     return () => {
       onData.dispose();
       ro.disconnect();
-      container.removeEventListener('pointerdown', onPointerDown);
-      container.removeEventListener('pointermove', onPointerMove);
-      container.removeEventListener('pointerup', onPointerUp);
-      container.removeEventListener('pointercancel', onPointerUp);
+      container.removeEventListener('touchstart', onTouchStart);
+      container.removeEventListener('touchmove', onTouchMove);
+      container.removeEventListener('touchend', onTouchEnd);
+      container.removeEventListener('touchcancel', onTouchEnd);
       if (resizeTimer) clearTimeout(resizeTimer);
       term.dispose();
       container.replaceChildren();
