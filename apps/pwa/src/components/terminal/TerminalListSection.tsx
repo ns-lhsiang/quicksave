@@ -48,7 +48,7 @@ export function TerminalListSection() {
   const rows = useMemo(() => {
     return Object.values(terminals)
       .filter((t) => t.machineAgentId)
-      .sort((a, b) => b.lastActivityAt - a.lastActivityAt);
+      .sort((a, b) => a.createdAt - b.createdAt);
   }, [terminals]);
 
   const handleSpawn = useCallback(async (project: ProjectEntry) => {
