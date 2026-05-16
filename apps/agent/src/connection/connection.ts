@@ -25,6 +25,7 @@ import {
   isPaired,
   loadConfig,
   pinPeerPWA,
+  saveConfig,
   unlockPairingAndRotate,
   type AgentConfig,
 } from '../config.js';
@@ -86,6 +87,10 @@ export class AgentConnection extends EventEmitter {
 
   // Key exchange replay protection
   private static readonly KEY_EXCHANGE_MAX_AGE_MS = 60000; // 60 seconds
+
+  // Auto-unpair after repeated sigPubkey mismatches (PWA lost its IndexedDB keys)
+  private static readonly MISMATCH_AUTO_UNPAIR_THRESHOLD = 3;
+  private sigPubkeyMismatchCount = 0;
 
   // Periodic catch-up GET fallback. Runs even when the relay-push channel is
   // healthy — if the push path is silently broken (relay restart before we
@@ -459,16 +464,32 @@ export class AgentConnection extends EventEmitter {
     const config = loadConfig();
     if (config && isPaired(config)) {
       if (message.sigPubkey !== config.peerPWASignPublicKey) {
-        console.error(
-          'Key exchange sigPubkey does not match pinned peer — rejecting',
-        );
-        this.emit(
-          'error',
-          new Error('Key exchange sigPubkey mismatch (peer not the pinned PWA group)'),
-        );
-        return;
+        this.sigPubkeyMismatchCount++;
+        if (this.sigPubkeyMismatchCount >= AgentConnection.MISMATCH_AUTO_UNPAIR_THRESHOLD) {
+          console.log(
+            `SigPubkey mismatch ${this.sigPubkeyMismatchCount}x — PWA likely lost its keys. Auto-unpairing to allow re-TOFU.`,
+          );
+          this.sigPubkeyMismatchCount = 0;
+          config.peerPWAPublicKey = null;
+          config.peerPWASignPublicKey = null;
+          saveConfig(config);
+          // Fall through to the unpaired TOFU path below
+        } else {
+          console.error(
+            `Key exchange sigPubkey does not match pinned peer — rejecting (${this.sigPubkeyMismatchCount}/${AgentConnection.MISMATCH_AUTO_UNPAIR_THRESHOLD})`,
+          );
+          this.emit(
+            'error',
+            new Error('Key exchange sigPubkey mismatch (peer not the pinned PWA group)'),
+          );
+          return;
+        }
+      } else {
+        this.sigPubkeyMismatchCount = 0;
       }
-    } else {
+    }
+
+    if (config && !isPaired(config)) {
       // Unpaired: TOFU. Pin the claimed signing key (and the PWA's X25519
       // pubkey, derived from the routed address — `pwa:{publicKey}`) for
       // all future handshakes.

@@ -82,6 +82,7 @@ vi.mock('../config.js', () => ({
   isPaired: mockIsPaired,
   loadConfig: mockLoadConfig,
   pinPeerPWA: mockPinPeerPWA,
+  saveConfig: vi.fn(),
 }));
 
 vi.mock('@sumicom/quicksave-shared', () => ({
