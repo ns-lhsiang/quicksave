@@ -162,7 +162,14 @@ export function TerminalView({ terminalId, getBus, onExit }: TerminalViewProps) 
       ta.setAttribute('autocorrect', 'off');
       ta.setAttribute('autocomplete', 'off');
       ta.setAttribute('spellcheck', 'false');
-      ta.setAttribute('inputmode', 'none');
+      // Hide virtual keyboard on mobile by keeping textarea readonly until
+      // the user explicitly taps "⌨ Type". Using readonly (instead of
+      // inputmode="none") preserves full IME support for CJK input once
+      // the keyboard is activated.
+      const isMobile = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+      if (isMobile) {
+        ta.readOnly = true;
+      }
     }
 
     // Debounce resize cmds. ResizeObserver and the fit RAF can fire many
@@ -191,10 +198,42 @@ export function TerminalView({ terminalId, getBus, onExit }: TerminalViewProps) 
 
     const onData = term.onData((chunk) => {
       if (replayingSnapshotRef.current) return;
+      lastOnDataTs = Date.now();
       sendInput(terminalId, chunk).catch((err) =>
         console.warn('[terminal] input failed:', err),
       );
     });
+
+    // Track when xterm's onData fires so the fallback can detect missed input.
+    let lastOnDataTs = 0;
+
+    // Fallback for characters that xterm.js drops on iOS. When the user types
+    // from the iOS "123" symbol keyboard, iOS sends keyCode=229 (same as IME)
+    // but xterm's CompositionHelper setTimeout(0) can miss the textarea value
+    // change. This listener fires after xterm's own handlers; if onData didn't
+    // fire within a short window, we forward the character ourselves.
+    const taForFallback = term.textarea;
+    const inputFallback = (ev: Event) => {
+      if (replayingSnapshotRef.current) return;
+      const ie = ev as InputEvent;
+      if (!ie.data) return;
+      // Only catch insertText that xterm might have missed. Composition
+      // events (insertCompositionText) are handled by CompositionHelper.
+      if (ie.inputType !== 'insertText') return;
+      // If onData fired very recently (within 20ms), xterm handled it.
+      if (Date.now() - lastOnDataTs < 20) return;
+      // Give xterm's own setTimeout(0) a chance to run first.
+      setTimeout(() => {
+        // Re-check: if onData fired in the meantime, xterm caught up.
+        if (Date.now() - lastOnDataTs < 50) return;
+        sendInput(terminalId, ie.data!).catch((err) =>
+          console.warn('[terminal] fallback input failed:', err),
+        );
+      }, 30);
+    };
+    if (taForFallback) {
+      taForFallback.addEventListener('input', inputFallback);
+    }
 
     const ro = new ResizeObserver(() => {
       fitToStandardCols(term, fit);
@@ -266,6 +305,9 @@ export function TerminalView({ terminalId, getBus, onExit }: TerminalViewProps) 
 
     return () => {
       onData.dispose();
+      if (taForFallback) {
+        taForFallback.removeEventListener('input', inputFallback);
+      }
       ro.disconnect();
       container.removeEventListener('touchstart', onTouchStart);
       container.removeEventListener('touchmove', onTouchMove);
@@ -452,11 +494,11 @@ function VirtualKeys({
     const ta = termRef.current?.textarea;
     if (!ta) return;
     if (kbVisible) {
-      ta.setAttribute('inputmode', 'none');
+      ta.readOnly = true;
       ta.blur();
       setKbVisible(false);
     } else {
-      ta.removeAttribute('inputmode');
+      ta.readOnly = false;
       ta.focus();
       setKbVisible(true);
     }
