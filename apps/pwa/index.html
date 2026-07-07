@@ -44,6 +44,31 @@
         #app-splash .logo { animation: none; }
         #app-splash { transition: none; }
       }
+      #app-splash .diag {
+        max-width: min(90vw, 480px);
+        max-height: 40vh;
+        overflow: auto;
+        font-family: "SF Mono", Menlo, monospace;
+        font-size: 11px;
+        line-height: 1.4;
+        color: #fca5a5;
+        background: #1e293b;
+        border: 1px solid #475569;
+        border-radius: 8px;
+        padding: 12px;
+        white-space: pre-wrap;
+        word-break: break-word;
+        text-align: left;
+      }
+      #app-splash .diag-btn {
+        padding: 8px 20px;
+        border-radius: 6px;
+        background: #3b82f6;
+        color: white;
+        border: none;
+        font-size: 14px;
+        font-family: inherit;
+      }
     </style>
   </head>
   <body class="bg-slate-900 text-slate-100">
@@ -52,6 +77,61 @@
       <div class="label">Quicksave</div>
     </div>
     <div id="root"></div>
+    <script>
+      // Diagnostic net for the splash screen: if the app crashes or simply
+      // never finishes mounting before hiding #app-splash (see App.tsx),
+      // this renders the actual error (or a stuck-timeout notice) directly
+      // onto the screen, plus a one-tap "Reset" that wipes the SW + Cache
+      // Storage and reloads. Runs as a plain synchronous script (not a
+      // module), so it's active before the main bundle even starts
+      // evaluating — a crash there still gets caught.
+      (function () {
+        var splash = document.getElementById('app-splash');
+        var shown = false;
+        function showDiag(message) {
+          if (shown || !splash) return;
+          shown = true;
+          var box = document.createElement('div');
+          box.className = 'diag';
+          box.textContent = message;
+          var btn = document.createElement('button');
+          btn.className = 'diag-btn';
+          btn.textContent = 'Reset & Reload';
+          btn.onclick = function () {
+            var jobs = [];
+            if ('caches' in window) {
+              jobs.push(caches.keys().then(function (keys) {
+                return Promise.all(keys.map(function (k) { return caches.delete(k); }));
+              }));
+            }
+            if ('serviceWorker' in navigator) {
+              jobs.push(navigator.serviceWorker.getRegistrations().then(function (regs) {
+                return Promise.all(regs.map(function (r) { return r.unregister(); }));
+              }));
+            }
+            Promise.all(jobs).catch(function () {}).finally(function () {
+              location.reload();
+            });
+          };
+          splash.appendChild(box);
+          splash.appendChild(btn);
+        }
+        window.addEventListener('error', function (e) {
+          var err = e.error;
+          showDiag('Error: ' + (e.message || String(err)) + (err && err.stack ? '\n' + err.stack : ''));
+        });
+        window.addEventListener('unhandledrejection', function (e) {
+          var reason = e.reason;
+          var text = reason && (reason.stack || reason.message) ? (reason.stack || reason.message) : String(reason);
+          showDiag('Unhandled rejection: ' + text);
+        });
+        setTimeout(function () {
+          if (splash && !splash.classList.contains('fade-out')) {
+            showDiag('Stuck: app did not finish loading within 6s.\nNo JS error was thrown, so this is a hang rather than a crash\n(or the SW/cache is serving a broken bundle).');
+          }
+        }, 6000);
+      })();
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
