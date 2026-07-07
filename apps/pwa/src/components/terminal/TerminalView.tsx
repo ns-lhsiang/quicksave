@@ -8,6 +8,7 @@ import '@xterm/xterm/css/xterm.css';
 import type { TerminalOutputSnapshot, TerminalOutputChunk } from '@sumicom/quicksave-shared';
 import type { MessageBusClient } from '@sumicom/quicksave-message-bus';
 import { useTerminalOps } from '../../hooks/useTerminalOps';
+import { useKeyboardInset } from '../../hooks/useKeyboardInset';
 
 interface TerminalViewProps {
   terminalId: string;
@@ -110,11 +111,21 @@ export function TerminalView({ terminalId, getBus, onExit }: TerminalViewProps) 
   // swallowed. applySnapshot demotes us to false if the agent reports the
   // terminal is gone.
   const [connected, setConnected] = useState(true);
+  // False for the brief window between mount and `term.open()` completing.
+  // VirtualKeys' "⌨ Type" button calls `termRef.current.focus()` — on iOS
+  // that call must happen synchronously inside the tap's user-gesture, so if
+  // the ref isn't populated yet the tap has to just no-op (can't retry later
+  // and still get the keyboard to show). Gating the button on this instead
+  // of leaving it silently inert closes that race without touching the
+  // mount effect's timing (kept as a plain `useEffect` — see below).
+  const [termReady, setTermReady] = useState(false);
+  const keyboardInset = useKeyboardInset();
 
   // Mount xterm once per terminalId.
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
+    setTermReady(false);
     // xterm's dispose() removes event listeners but does NOT remove the
     // helper textarea / char-measure span / .xterm div it appended in open().
     // On a fresh React mount the container is a new DOM node so this is a
@@ -146,6 +157,7 @@ export function TerminalView({ terminalId, getBus, onExit }: TerminalViewProps) 
     term.open(container);
     termRef.current = term;
     fitRef.current = fit;
+    setTermReady(true);
 
     // iOS Safari quirk: the on-screen keyboard's default "return" key has
     // `enterkeyhint=enter`, which dismisses the keyboard whenever the user
@@ -447,7 +459,7 @@ export function TerminalView({ terminalId, getBus, onExit }: TerminalViewProps) 
   }, [sendInput, terminalId]);
 
   return (
-    <div className="flex flex-col h-full bg-slate-900">
+    <div className="flex flex-col h-full bg-slate-900" style={{ paddingBottom: keyboardInset }}>
       <div
         ref={containerRef}
         className="flex-1 min-h-0 w-full overflow-hidden"
@@ -461,6 +473,7 @@ export function TerminalView({ terminalId, getBus, onExit }: TerminalViewProps) 
         connected={connected}
         exited={exitCode !== undefined}
         termRef={termRef}
+        termReady={termReady}
       />
     </div>
   );
@@ -478,6 +491,7 @@ function VirtualKeys({
   connected,
   exited,
   termRef,
+  termReady,
 }: {
   onKey: (seq: string) => void;
   onPaste: () => void;
@@ -485,6 +499,7 @@ function VirtualKeys({
   connected: boolean;
   exited: boolean;
   termRef: React.RefObject<import('@xterm/xterm').Terminal | null>;
+  termReady: boolean;
 }) {
   const [ctrlMode, setCtrlMode] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
@@ -583,7 +598,7 @@ function VirtualKeys({
           <KeyBtn
             className={kbVisible ? 'text-yellow-300 border-yellow-500/60' : 'text-slate-400 border-slate-600'}
             onClick={toggleKeyboard}
-            disabled={!connected || exited}
+            disabled={!connected || exited || !termReady}
           >
             {kbVisible ? '⌨ Hide' : '⌨ Type'}
           </KeyBtn>

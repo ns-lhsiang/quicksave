@@ -30,6 +30,7 @@ import {
   type PendingAttachment,
 } from '../lib/attachmentUploader';
 import { attachmentsFromDataTransfer, inspectPaste, processPasteInspection } from '../lib/attachments';
+import { useKeyboardInset } from '../hooks/useKeyboardInset';
 
 type StartSessionOpts = { agent?: 'claude-code' | 'codex'; allowedTools?: string[]; systemPrompt?: string; model?: string; permissionMode?: string; sandboxed?: boolean; reasoningEffort?: string; contextWindow?: number; attachmentIds?: string[]; attachmentMetadata?: AttachmentMetadata[] };
 type ResumeSessionOpts = { attachmentIds?: string[]; attachmentMetadata?: AttachmentMetadata[] };
@@ -619,8 +620,10 @@ export function ClaudePanel({
     el.style.height = `${Math.min(el.scrollHeight, lineHeight * 5)}px`;
   }, [saveDraft, setPromptInput]);
 
+  const keyboardInset = useKeyboardInset();
+
   return (
-    <div className="flex flex-col flex-1 min-h-0">
+    <div className="flex flex-col flex-1 min-h-0" style={{ paddingBottom: keyboardInset }}>
       {isChat ? (
         <>
           {/* Messages */}
