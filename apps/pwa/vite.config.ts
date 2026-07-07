@@ -1,38 +1,20 @@
 // SPDX-FileCopyrightText: 2026 King Young Technology
 // SPDX-License-Identifier: MIT
-import { readFileSync, existsSync } from 'fs';
-import { homedir } from 'os';
-import { join } from 'path';
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 import basicSsl from '@vitejs/plugin-basic-ssl';
 import { signalingServerPlugin } from './vite-plugin-relay';
 
-// Prefer a locally-trusted mkcert certificate (installed as a CA profile on
-// phones, so no per-visit "not private" warning) over vite's basicSsl plugin,
-// which mints a throwaway self-signed cert every run — phones don't
-// (reliably) remember trusting that across restarts. Falls back to basicSsl
-// when the mkcert files aren't present (e.g. a fresh clone).
-const certFile = process.env.QUICKSAVE_CERT_FILE || join(homedir(), '.local/share/quicksave-certs/quicksave.pem');
-const keyFile = process.env.QUICKSAVE_KEY_FILE || join(homedir(), '.local/share/quicksave-certs/quicksave-key.pem');
-const mkcertHttps = existsSync(certFile) && existsSync(keyFile)
-  ? { cert: readFileSync(certFile), key: readFileSync(keyFile) }
-  : null;
-
 export default defineConfig({
   envPrefix: ['VITE_', 'QUICKSAVE_'],
   server: {
     host: true, // Allow external access (needed for ngrok)
     port: 5173,
-    https: mkcertHttps || undefined,
     allowedHosts: ['.ngrok-free.app', '.ngrok.io', 'localhost'],
   },
-  preview: {
-    https: mkcertHttps || undefined,
-  },
   plugins: [
-    ...(mkcertHttps ? [] : [basicSsl()]),
+    basicSsl(),
     signalingServerPlugin(),
     react(),
     VitePWA({
