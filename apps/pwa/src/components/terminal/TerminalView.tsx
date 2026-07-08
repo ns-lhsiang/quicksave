@@ -505,6 +505,34 @@ function VirtualKeys({
   const [showHelp, setShowHelp] = useState(false);
   const [kbVisible, setKbVisible] = useState(false);
 
+  // iOS can dismiss the on-screen keyboard for reasons other than our own
+  // toggleKeyboard() call below (observed after submitting a Claude Code
+  // confirmation with Enter). Without this, `kbVisible` goes stale — the
+  // button still thinks the keyboard is up, so the next tap "hides" an
+  // already-hidden keyboard instead of showing it, and the user needs an
+  // extra Type/Hide/Type cycle to actually get it back. Only react to a
+  // blur while we ourselves left the textarea non-readonly (i.e. we
+  // expected the keyboard to be visible) — a blur while already readonly
+  // is just our own toggle-off, already reflected in state.
+  useEffect(() => {
+    const ta = termRef.current?.textarea;
+    if (!ta) return;
+    const onBlur = () => {
+      if (ta.readOnly) return;
+      // iOS can fire a transient blur immediately followed by refocus while
+      // the keyboard is still animating in (e.g. right after our own
+      // focus() call in toggleKeyboard) — that's not a real dismissal.
+      // Confirm the textarea is still not the active element a moment
+      // later before syncing state, or a genuine "show" tap gets
+      // immediately undone by this same listener.
+      setTimeout(() => {
+        if (document.activeElement !== ta) setKbVisible(false);
+      }, 100);
+    };
+    ta.addEventListener('blur', onBlur);
+    return () => ta.removeEventListener('blur', onBlur);
+  }, [termRef, termReady]);
+
   const toggleKeyboard = () => {
     const ta = termRef.current?.textarea;
     if (!ta) return;
@@ -513,6 +541,16 @@ function VirtualKeys({
       ta.blur();
       setKbVisible(false);
     } else {
+      // Other virtual keys (Enter/Tab/arrows/...) and tapping the terminal
+      // display itself (container onClick, below) call termRef.current?.focus()
+      // to keep xterm "active", which can leave the (still readonly) textarea
+      // as document.activeElement well before the user ever taps Type. iOS
+      // only pops the keyboard on a genuine focus *transition* — calling
+      // focus() on an element that's already the active element is a no-op
+      // as far as the keyboard is concerned. Unconditionally blur first (a
+      // no-op if it wasn't focused) so the focus() below is always a real
+      // 0→1 transition, regardless of what focused it last.
+      ta.blur();
       ta.readOnly = false;
       ta.focus();
       setKbVisible(true);
@@ -599,6 +637,7 @@ function VirtualKeys({
             className={kbVisible ? 'text-yellow-300 border-yellow-500/60' : 'text-slate-400 border-slate-600'}
             onClick={toggleKeyboard}
             disabled={!connected || exited || !termReady}
+            keepFocus={false}
           >
             {kbVisible ? '⌨ Hide' : '⌨ Type'}
           </KeyBtn>
@@ -615,17 +654,27 @@ function VirtualKeys({
  * cancelling the default on pointerdown/mousedown we keep the textarea
  * focused, so the keyboard stays up between taps. The click event still
  * fires because it's dispatched independently.
+ *
+ * The Type/Hide toggle is the one exception: it calls `textarea.focus()`
+ * itself to *open* the keyboard from closed, and iOS only honors a
+ * programmatic focus() as keyboard-opening when it runs inside a trusted,
+ * uninterrupted user-gesture chain. Cancelling pointerdown's default here
+ * breaks that chain — the click still fires and state still updates, but
+ * the keyboard silently never appears. Pass `keepFocus={false}` to skip
+ * the preventDefault for that one button.
  */
 function KeyBtn({
   onClick,
   disabled,
   className,
   children,
+  keepFocus = true,
 }: {
   onClick: () => void;
   disabled?: boolean;
   className?: string;
   children: React.ReactNode;
+  keepFocus?: boolean;
 }) {
   const base =
     'shrink-0 min-w-[44px] px-3 py-2 rounded-md text-sm font-mono border border-slate-700 bg-slate-800 text-slate-200 active:bg-slate-700 disabled:opacity-40';
@@ -633,8 +682,8 @@ function KeyBtn({
     <button
       type="button"
       tabIndex={-1}
-      onPointerDown={(e) => e.preventDefault()}
-      onMouseDown={(e) => e.preventDefault()}
+      onPointerDown={keepFocus ? (e) => e.preventDefault() : undefined}
+      onMouseDown={keepFocus ? (e) => e.preventDefault() : undefined}
       onClick={onClick}
       disabled={disabled}
       className={className ? `${base} ${className}` : base}
