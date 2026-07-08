@@ -75,6 +75,27 @@ function openDatabase(): Promise<IDBDatabase> {
 }
 
 /**
+ * Ask the browser not to evict this origin's storage under pressure (or,
+ * on iOS Safari, after ~7 days of no interaction). Without this, IndexedDB
+ * eviction silently wipes the master secret, which regenerates as a brand
+ * new identity on next launch and desyncs from whatever the Agent has
+ * TOFU-pinned — the "sigPubkey mismatch" reconnect loop.
+ *
+ * Best-effort: unsupported or denied is not an error, just leaves the
+ * origin exposed to normal eviction rules as before.
+ */
+export async function requestPersistentStorage(): Promise<boolean> {
+  if (!navigator.storage?.persist) return false;
+  try {
+    const already = await navigator.storage.persisted?.();
+    if (already) return true;
+    return await navigator.storage.persist();
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Check if master secret exists in storage
  */
 export async function hasMasterSecret(): Promise<boolean> {

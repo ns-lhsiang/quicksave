@@ -9,17 +9,14 @@ import { PairDeviceModal } from './PairDeviceModal';
 import { ScanToJoinModal } from './ScanToJoinModal';
 import { ApiKeySection } from './settings/ApiKeySection';
 import { DangerZoneSection } from './settings/DangerZoneSection';
-import { NotificationSection } from './settings/NotificationSection';
 import { MachinesSection } from './settings/MachinesSection';
 import { LanguageSection } from './settings/LanguageSection';
-import type { Message, PushSubscriptionOfferPayload } from '@sumicom/quicksave-shared';
 
 interface SettingsPageProps {
   onSendApiKeyToAgent?: (apiKey: string) => Promise<boolean>;
-  onPushOffer?: (msg: Message<PushSubscriptionOfferPayload>) => void;
 }
 
-export function SettingsPage({ onSendApiKeyToAgent, onPushOffer }: SettingsPageProps) {
+export function SettingsPage({ onSendApiKeyToAgent }: SettingsPageProps) {
   const navigate = useNavigate();
   const intl = useIntl();
   const [showPairModal, setShowPairModal] = useState(false);
@@ -39,10 +36,6 @@ export function SettingsPage({ onSendApiKeyToAgent, onPushOffer }: SettingsPageP
       <div className="flex-1 overflow-y-auto">
         <div className="max-w-lg mx-auto p-4 space-y-6">
           <MachinesSection />
-
-          <div className="border-t border-slate-700" />
-
-          <NotificationSection onPushOffer={onPushOffer} />
 
           <div className="border-t border-slate-700" />
 

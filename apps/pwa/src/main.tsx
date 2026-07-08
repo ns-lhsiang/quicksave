@@ -2,21 +2,22 @@
 // SPDX-License-Identifier: MIT
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import { registerSW } from 'virtual:pwa-register';
 import App from './App';
 import { IntlProvider } from './i18n/IntlProvider';
 import './index.css';
 
-// `registerType: 'prompt'` (see vite.config.ts) requires the page to send
-// `SKIP_WAITING` itself once a new SW is detected — this is what actually
-// does that (immediately, no real prompt UI). Without it, updates silently
-// sit in `waiting` until every client is fully closed.
+// We no longer ship a service worker (removed 2026-07: its update lifecycle
+// could strand an already-open tab on a stale bundle indefinitely — see
+// git history on sw.ts). Actively unregister and clear any cache left by a
+// previously-installed one so existing devices actually escape the trap
+// instead of just not getting a new one.
 if ('serviceWorker' in navigator) {
-  const updateSW = registerSW({
-    onNeedRefresh() {
-      updateSW(true);
-    },
+  void navigator.serviceWorker.getRegistrations().then((regs) => {
+    for (const reg of regs) void reg.unregister();
   });
+}
+if ('caches' in window) {
+  void caches.keys().then((keys) => Promise.all(keys.map((k) => caches.delete(k))));
 }
 
 ReactDOM.createRoot(document.getElementById('root')!).render(

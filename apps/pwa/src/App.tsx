@@ -32,8 +32,6 @@ import {
   type CodexModelInfo,
   type CommitSummaryState,
   type ConfigValue,
-  type Message,
-  type PushSubscriptionOfferPayload,
   type SessionConfigUpdatedPayload,
   type SessionHistoryUpdatedPayload,
   type BroadcastSessionEntry,
@@ -47,8 +45,6 @@ import { registerActiveBusGetter, registerAgentBusGetter } from './lib/busRegist
 import { registerWsRetry } from './lib/wsRetryRegistry';
 import { applySessionUpdate } from './lib/applySessionUpdate';
 import { applyHistoryEntry, applyHistoryAction } from './lib/applyHistoryEntry';
-import { NotificationPrompt } from './components/NotificationPrompt';
-import { buildOfferMessage, getCurrentSubscription, notificationPermission } from './lib/pushSubscription';
 import { GitIdentityModal } from './components/GitIdentityModal';
 import { SettingsPage } from './components/SettingsPage';
 import { MachineInfoPage } from './components/MachineInfoPage';
@@ -581,24 +577,6 @@ function AppContent() {
         // The `/repos/commit-summary` snap similarly hydrates any pending
         // AI commit summary state.
 
-        // Auto-offer push subscription: if the user has already granted
-        // notification permission in a past session, re-send the offer so the
-        // agent can refresh the relay registration (browsers may rotate the
-        // endpoint). No-op if permission isn't granted yet — the
-        // NotificationPrompt banner handles the first-time flow.
-        if (notificationPermission() === 'granted') {
-          void (async () => {
-            try {
-              const sub = await getCurrentSubscription();
-              if (sub && clientRef.current) {
-                clientRef.current.sendToAgent(agentId, buildOfferMessage(sub));
-              }
-            } catch (err) {
-              console.warn('[push] auto-offer failed', err);
-            }
-          })();
-        }
-
         // Project route components (/p/) manage their own navigation after connection.
         // No need to navigate on connect — the home page and project routes handle it.
       },
@@ -940,22 +918,11 @@ function AppContent() {
     </div>
   );
 
-  const handlePushOffer = useCallback((msg: Message<PushSubscriptionOfferPayload>) => {
-    const client = clientRef.current;
-    if (!client) return;
-    try {
-      client.send(msg);
-    } catch (err) {
-      console.warn('[push] failed to send subscription offer', err);
-    }
-  }, []);
-
   return (
     <div
       className="flex flex-col bg-slate-900 text-slate-100 overflow-hidden h-full transition-[padding] duration-200"
       style={isDesktop && filePreviewOpen ? { paddingRight: filePreviewPanelWidth } : undefined}
     >
-      {isConnected && <NotificationPrompt onOffer={handlePushOffer} />}
       {isDesktop ? (
         machines.length === 0 ? (
           // Pre-pair: full-width connection setup, no sidebar yet.
@@ -963,7 +930,7 @@ function AppContent() {
           <Routes>
             <Route
               path="/settings"
-              element={<SettingsPage onSendApiKeyToAgent={isConnected ? setApiKey : undefined} onPushOffer={handlePushOffer} />}
+              element={<SettingsPage onSendApiKeyToAgent={isConnected ? setApiKey : undefined} />}
             />
             <Route path="/pair" element={<JoinGroupPage />} />
             <Route
@@ -991,7 +958,7 @@ function AppContent() {
                 <Route path="/p/:projectId/files" element={<FileBrowserPage />} />
                 <Route path="/p/:projectId/files/*" element={<FileBrowserPage />} />
                 <Route path="/add" element={<AddNewPage onSetActiveAgent={setActiveAgent} onBrowseDirectory={browseDirectory} onCloneRepo={cloneRepo} onAddCodingPath={addCodingPath} onConnect={handleConnect} onStartSession={startSession} />} />
-                <Route path="/settings" element={<SettingsPage onSendApiKeyToAgent={isConnected ? setApiKey : undefined} onPushOffer={handlePushOffer} />} />
+                <Route path="/settings" element={<SettingsPage onSendApiKeyToAgent={isConnected ? setApiKey : undefined} />} />
                 <Route path="/settings/m/:agentId" element={<MachineInfoPage onSetActiveAgent={setActiveAgent} onCheckAgentUpdate={checkAgentUpdate} onUpdateAgent={updateAgent} onRestartAgent={restartAgent} onDeleteProject={handleDeleteProject} onGetSystemdStatus={getSystemdStatus} onInstallSystemdUnit={installSystemdUnit} onUninstallSystemdUnit={uninstallSystemdUnit} />} />
                 <Route path="/settings/m/:agentId/p/:projectId/archived" element={<ArchivedSessionsPage onSetActiveAgent={setActiveAgent} onListArchivedSessions={listArchivedSessions} onRestoreSession={restoreSession} />} />
                 <Route path="/connect/:agentId" element={<ConnectHandler onConnect={handleConnect} />} />
@@ -1012,7 +979,7 @@ function AppContent() {
           <Route path="/p/:projectId/files" element={<FileBrowserPage />} />
           <Route path="/p/:projectId/files/*" element={<FileBrowserPage />} />
           <Route path="/add" element={<AddNewPage onSetActiveAgent={setActiveAgent} onBrowseDirectory={browseDirectory} onCloneRepo={cloneRepo} onAddCodingPath={addCodingPath} onConnect={handleConnect} onStartSession={startSession} />} />
-          <Route path="/settings" element={<SettingsPage onSendApiKeyToAgent={isConnected ? setApiKey : undefined} onPushOffer={handlePushOffer} />} />
+          <Route path="/settings" element={<SettingsPage onSendApiKeyToAgent={isConnected ? setApiKey : undefined} />} />
           <Route path="/settings/m/:agentId" element={<MachineInfoPage onSetActiveAgent={setActiveAgent} onCheckAgentUpdate={checkAgentUpdate} onUpdateAgent={updateAgent} onRestartAgent={restartAgent} onDeleteProject={handleDeleteProject} onGetSystemdStatus={getSystemdStatus} onInstallSystemdUnit={installSystemdUnit} onUninstallSystemdUnit={uninstallSystemdUnit} />} />
           <Route path="/settings/m/:agentId/p/:projectId/archived" element={<ArchivedSessionsPage onSetActiveAgent={setActiveAgent} onListArchivedSessions={listArchivedSessions} onRestoreSession={restoreSession} />} />
           <Route path="/connect/:agentId" element={<ConnectHandler onConnect={handleConnect} />} />

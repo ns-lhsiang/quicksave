@@ -10,6 +10,7 @@ import {
   getMasterSecret,
   clearMasterSecret,
   importMasterSecret,
+  requestPersistentStorage,
 } from '../lib/secureStorage';
 
 interface IdentityState {
@@ -38,6 +39,7 @@ export const useIdentityStore = create<IdentityState>((set) => ({
   initialized: false,
 
   initialize: async () => {
+    void requestPersistentStorage();
     const masterSecret = await getMasterSecret();
     const { x25519 } = deriveSharedKeys(masterSecret);
     set({
