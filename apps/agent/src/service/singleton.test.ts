@@ -18,7 +18,7 @@ describe('isProcessAlive', () => {
 
 describe('shouldRestartDaemon', () => {
   const makeDaemon = (overrides: Partial<HelloResult> = {}): HelloResult => ({
-    daemonVersion: '0.8.7',
+    daemonVersion: '0.8.8',
     daemonIpcVersion: IPC_VERSION,
     daemonBuildId: BUILD_ID,
     daemonPid: 12345,
